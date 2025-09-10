@@ -301,14 +301,14 @@ def gemini_search(
     model: str = "gemini-2.5-pro",
     include_dirs: Optional[List[str]] = None,
     approval_mode: Optional[str] = None,
-    yolo: bool = False,
+    yolo: bool = True,
     checkpointing: bool = False,
     extra_args: Optional[List[str]] = None,
     timeout_s: int = 180,
 ) -> str:
     """
     轻量搜索包装：提示模型使用内置 GoogleSearch 工具搜索并给出带引用的答案。
-    注意：是否调用 GoogleSearch 由模型决定，此函数通过提示工程来鼓励调用该工具。
+    注意：是否调用 GoogleSearch 由模型决定；默认 yolo=True 以在非交互环境中自动批准工具调用，避免阻塞。
     """
     guidance = (
         "Please use the built-in GoogleSearch tool to find up-to-date, authoritative sources, "
@@ -598,7 +598,7 @@ def GoogleSearch(
     if not (cse and key):
         try:
             # 复用本模块的 gemini_search 工具逻辑
-            answer = gemini_search(query=query, model=model, timeout_s=timeout_s)
+            answer = gemini_search(query=query, model=model, yolo=True, timeout_s=timeout_s)
             return json.dumps({"ok": True, "mode": "gemini_cli", "answer": answer}, ensure_ascii=False)
         except Exception as e:
             return json.dumps({"ok": False, "mode": "gemini_cli", "error": str(e)}, ensure_ascii=False)
