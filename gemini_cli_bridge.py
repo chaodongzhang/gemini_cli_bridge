@@ -219,8 +219,8 @@ def gemini_web_fetch(
     timeout_s: int = 180,
 ) -> str:
     """
-    便捷包装：强制在提示中注入 URL 列表，触发 CLI 的 web_fetch 能力。
-    说明：web_fetch 是 CLI 的内置工具，模型会基于包含的 URL 决定是否调用。
+    便捷包装：强制在提示中注入 URL 列表，触发 CLI 的 WebFetch 能力。
+    说明：WebFetch 是 CLI 的内置工具，模型会基于包含的 URL 决定是否调用。
     """
     urls = [u for u in (urls or []) if isinstance(u, str) and (u.startswith("http://") or u.startswith("https://"))]
     if not urls:
@@ -307,11 +307,11 @@ def gemini_search(
     timeout_s: int = 180,
 ) -> str:
     """
-    轻量搜索包装：提示模型使用内置 web_search 工具搜索并给出带引用的答案。
-    注意：是否调用 web_search 由模型决定，此函数通过提示工程来鼓励调用该工具。
+    轻量搜索包装：提示模型使用内置 GoogleSearch 工具搜索并给出带引用的答案。
+    注意：是否调用 GoogleSearch 由模型决定，此函数通过提示工程来鼓励调用该工具。
     """
     guidance = (
-        "Please use the built-in web_search tool to find up-to-date, authoritative sources, "
+        "Please use the built-in GoogleSearch tool to find up-to-date, authoritative sources, "
         "then synthesize an answer with citations. Prioritize primary sources and include URLs.\n\n"
     )
     final_prompt = guidance + f"Search task: {query.strip()}"
