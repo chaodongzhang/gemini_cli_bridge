@@ -26,6 +26,13 @@ which gemini && gemini --version
 
 ## 安装与运行
 
+在开始之前，先将仓库克隆到本地：
+
+```zsh
+git clone https://github.com/chaodongzhang/gemini_cli_bridge.git
+cd gemini_cli_bridge
+```
+
 方式 A（推荐，全局安装一次，后续任意目录可用）：
 
 ```zsh
