@@ -1,29 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
-import subprocess
-import re
-import json
-import time
-import signal
-import contextlib
-import urllib.request
-import urllib.error
-import socket
-import ipaddress
-from urllib.parse import urlparse, urlencode
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
-from fastmcp import FastMCP  # 若你改用官方 SDK，则用: from mcp.server.fastmcp import FastMCP
+import contextlib
+import ipaddress
+import json
+import os
+import re
+import socket
+import subprocess
+import urllib.request
+from urllib.parse import urlencode, urlparse
 
-# 对外展示/握手时的服务名称（客户端列表中显示）。
-# 注意：这不会影响启动命令名（仍为 gemini-cli-bridge），只是显示与识别更友好。
+from fastmcp import FastMCP
+
+
+# ---- 常量与 MCP 初始化 -------------------------------------------------------
+MAX_OUT = 200_000  # 截断超长输出，避免客户端卡顿
 mcp = FastMCP("Gemini")
-
-# 统一输出截断上限（可通过环境覆盖）
-MAX_OUT = int(os.getenv("MCP_MAX_OUTPUT", "20000"))
 
 @mcp.tool()  # 关键改动：必须带括号
 def gemini_prompt(
@@ -578,24 +574,35 @@ def GoogleSearch(
     api_key: Optional[str] = None,
     model: str = "gemini-2.5-pro",
     timeout_s: int = 120,
+    mode: Optional[str] = None,  # auto | gemini_cli | gcs
 ) -> str:
-    """搜索工具（优先使用 Gemini CLI 内置 web_search）。
+    """搜索工具（默认优先使用 Gemini CLI 内置 GoogleSearch）。
 
-    优先级：
-    1) 若未配置 GOOGLE_CSE_ID/GOOGLE_API_KEY（或未传入 cse_id/api_key），则使用 Gemini CLI 的内置 web_search
-       （通过调用 `gemini_search`，无需额外密钥，前提是本机已登录 gemini CLI）。
-    2) 若显式提供 GOOGLE_CSE_ID 与 GOOGLE_API_KEY，则使用 Google Programmable Search (Custom Search JSON API)。
+    运行模式：
+    - mode="gemini_cli"：强制走 CLI 内置 GoogleSearch（无需密钥，要求本机已登录 gemini CLI）。
+    - mode="gcs"：强制走 Google Programmable Search（需要 GOOGLE_CSE_ID + GOOGLE_API_KEY / 或通过参数传入）。
+    - mode=None 或 "auto"：自动；若检测到密钥则走 gcs，否则走 gemini_cli。
 
     返回 JSON：
     - 内置模式：{ ok: true, mode: "gemini_cli", answer: string }
     - GCS 模式：{ ok: true, mode: "gcs", results: [{title, link, snippet}] }
       失败：{ ok: false, error, results? }
     """
+    selected = (mode or "auto").strip().lower()
     cse = cse_id or os.getenv("GOOGLE_CSE_ID")
     key = api_key or os.getenv("GOOGLE_API_KEY")
 
-    # 优先使用 CLI 内置 web_search（无需密钥）
-    if not (cse and key):
+    # 选择模式
+    use_cli = False
+    if selected == "gemini_cli":
+        use_cli = True
+    elif selected == "gcs":
+        use_cli = False
+    else:  # auto
+        use_cli = not (cse and key)
+
+    # 内置模式：调用 gemini_search（非交互，yolo=True）
+    if use_cli:
         try:
             # 复用本模块的 gemini_search 工具逻辑
             answer = gemini_search(query=query, model=model, yolo=True, timeout_s=timeout_s)
@@ -603,7 +610,14 @@ def GoogleSearch(
         except Exception as e:
             return json.dumps({"ok": False, "mode": "gemini_cli", "error": str(e)}, ensure_ascii=False)
 
-    # 若提供了密钥，走 GCS 模式
+    # GCS 模式（需要 key + cse）
+    if not (cse and key):
+        return json.dumps({
+            "ok": False,
+            "mode": "gcs",
+            "results": [],
+            "error": "GOOGLE_CSE_ID/GOOGLE_API_KEY not provided",
+        }, ensure_ascii=False)
     try:
         params = {
             "key": key,
@@ -614,7 +628,7 @@ def GoogleSearch(
         url = f"https://www.googleapis.com/customsearch/v1?{urlencode(params)}"
         headers = {"User-Agent": "gemini-cli-bridge/1.0"}
         req = urllib.request.Request(url, headers=headers)
-        with contextlib.closing(urllib.request.urlopen(req, timeout=15)) as resp:
+        with contextlib.closing(urllib.request.urlopen(req, timeout=timeout_s)) as resp:
             charset = resp.headers.get_content_charset() or "utf-8"
             raw = resp.read().decode(charset, errors="ignore")
         data = json.loads(raw or "{}")

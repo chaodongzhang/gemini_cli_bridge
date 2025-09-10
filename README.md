@@ -149,8 +149,13 @@ mcp-cli --server gemini-cli-bridge
 - 附件/审批等高级推理：`gemini_prompt_plus(...)`
 - Web 抓取：`gemini_web_fetch(prompt, urls=[...])`
 - 管理 Gemini CLI 的 MCP：`gemini_mcp_list / gemini_mcp_add / gemini_mcp_remove`
+- 使用 Google 搜索：`GoogleSearch(query="...", limit=5)`（默认走 Gemini CLI 内置，无需密钥）
 
-说明：`GoogleSearch` 默认调用 Gemini CLI 内置的 GoogleSearch（无需 Google API 密钥，前提已登录 gemini CLI）。若同时设置了 `GOOGLE_CSE_ID` 与 `GOOGLE_API_KEY`，则切换为 Google Programmable Search 模式。
+说明：
+
+- `GoogleSearch` 默认调用 Gemini CLI 内置的 GoogleSearch（无需 Google API 密钥，前提已登录 gemini CLI）。
+- 若同时设置了 `GOOGLE_CSE_ID` 与 `GOOGLE_API_KEY`（来自环境或参数），会切换为 Google Programmable Search 模式（CSE）。
+- 你也可以通过 `mode` 参数显式指定：`"gemini_cli" | "gcs" | "auto"`（默认 auto）。
 
 ### MCP 工具调用请求示例
 
@@ -162,6 +167,31 @@ mcp-cli --server gemini-cli-bridge
   "arguments": {
     "prompt": "hello",
     "extra_args": ["--debug", "--proxy=http://127.0.0.1:7890"]
+  }
+}
+```
+
+调用 `GoogleSearch` 的最小 payload 示例（默认使用 CLI 内置 GoogleSearch）：
+
+```json
+{
+  "name": "GoogleSearch",
+  "arguments": {
+    "query": "泽塔科技",
+    "limit": 5
+  }
+}
+```
+
+强制走内置搜索（无需密钥）的示例：
+
+```json
+{
+  "name": "GoogleSearch",
+  "arguments": {
+    "query": "今日大模型行业新闻",
+    "limit": 5,
+    "mode": "gemini_cli"
   }
 }
 ```
@@ -231,6 +261,57 @@ which gemini && gemini --version
 ```
 
 1) PATH 问题：将 `/opt/homebrew/bin` 加入 PATH，或在客户端配置中通过 env 显式设置。
+
+## 避免 IDE 误走 CSE 模式（提示还需要 GOOGLE_API_KEY / GOOGLE_CSE_ID）
+
+可能原因：
+
+- IDE 里存在多个同名 `GoogleSearch` 工具（非本桥接的会要求 CSE Key）。
+- 你的 shell/IDE 环境里设置了 `GOOGLE_API_KEY` 与 `GOOGLE_CSE_ID`，触发了本工具的 CSE 模式。
+
+建议做法：
+
+1) 在 MCP 配置里显式清空这两个变量，确保走 CLI 内置搜索
+
+Codex（`~/.codex/config.toml`）：
+
+```toml
+[mcp_servers.Gemini]
+command = "gemini-cli-bridge"
+args = []
+
+[mcp_servers.Gemini.env]
+PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+GOOGLE_API_KEY = ""
+GOOGLE_CSE_ID = ""
+```
+
+Claude Code（VS Code 用户设置 JSON）：
+
+```json
+{
+  "claude.mcpServers": {
+    "Gemini": {
+      "command": "gemini-cli-bridge",
+      "args": [],
+      "env": { "GOOGLE_API_KEY": "", "GOOGLE_CSE_ID": "" }
+    }
+  }
+}
+```
+
+1. 在对话中点名使用“服务器 Gemini 的 GoogleSearch”
+
+例：请使用 MCP 服务器“Gemini”的“GoogleSearch”进行搜索。
+
+1. 验证是否走了 CLI 内置搜索
+
+- 先调用 `gemini_version`（应返回 `gemini --version`）。
+- 再调用 `GoogleSearch(query="test", limit=3)`，返回 JSON 中应出现 `"mode":"gemini_cli"`（表示走的是 CLI 内置），而不是 `"mode":"gcs"`。
+
+1. 避免工具名冲突（可选）
+
+若 IDE 里还有别的 `GoogleSearch`，可在脚本中将函数改名为 `GeminiGoogleSearch`（函数名即工具名），从根源上消除同名路由冲突。
 
 ## 许可
 
