@@ -1,0 +1,26 @@
+[project]
+name = "gemini-cli-bridge"
+version = "0.1.0"
+description = "MCP bridge for Gemini CLI and handy system/web tools"
+authors = [{name = "Your Name"}]
+requires-python = ">=3.10"
+readme = "README.gemini-cli-bridge.md"
+keywords = ["MCP", "Gemini", "CLI", "bridge"]
+license = {text = "MIT"}
+dependencies = [
+  "fastmcp>=0.3.0",
+  # 可选：用于 WebFetch/WebSearch（如果用不到可移除）
+  "requests>=2.31.0",
+  "duckduckgo-search>=6.1.0",
+]
+
+[project.scripts]
+gemini-cli-bridge = "gemini_cli_bridge:main"
+
+[tool.uv]
+# 允许 uv/uvx 解析可选依赖；用户可通过 --no-install-optional 跳过
+dev-dependencies = []
+
+[build-system]
+requires = ["hatchling>=1.24.0"]
+build-backend = "hatchling.build"
