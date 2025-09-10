@@ -571,19 +571,39 @@ def WebFetch(url: str, timeout_s: int = 15) -> str:
 
 
 @mcp.tool()
-def GoogleSearch(query: str, limit: int = 5, cse_id: Optional[str] = None, api_key: Optional[str] = None) -> str:
-    """使用 Google Programmable Search (Custom Search JSON API)。
-    需要环境变量 GOOGLE_CSE_ID 与 GOOGLE_API_KEY，或通过参数传入。
-    返回 JSON：{ok, results: [{title, link, snippet}], error?}
+def GoogleSearch(
+    query: str,
+    limit: int = 5,
+    cse_id: Optional[str] = None,
+    api_key: Optional[str] = None,
+    model: str = "gemini-2.5-pro",
+    timeout_s: int = 120,
+) -> str:
+    """搜索工具（优先使用 Gemini CLI 内置 web_search）。
+
+    优先级：
+    1) 若未配置 GOOGLE_CSE_ID/GOOGLE_API_KEY（或未传入 cse_id/api_key），则使用 Gemini CLI 的内置 web_search
+       （通过调用 `gemini_search`，无需额外密钥，前提是本机已登录 gemini CLI）。
+    2) 若显式提供 GOOGLE_CSE_ID 与 GOOGLE_API_KEY，则使用 Google Programmable Search (Custom Search JSON API)。
+
+    返回 JSON：
+    - 内置模式：{ ok: true, mode: "gemini_cli", answer: string }
+    - GCS 模式：{ ok: true, mode: "gcs", results: [{title, link, snippet}] }
+      失败：{ ok: false, error, results? }
     """
     cse = cse_id or os.getenv("GOOGLE_CSE_ID")
     key = api_key or os.getenv("GOOGLE_API_KEY")
-    if not cse or not key:
-        return json.dumps({
-            "ok": False,
-            "results": [],
-            "hint": "Set GOOGLE_CSE_ID and GOOGLE_API_KEY or pass cse_id/api_key",
-        }, ensure_ascii=False)
+
+    # 优先使用 CLI 内置 web_search（无需密钥）
+    if not (cse and key):
+        try:
+            # 复用本模块的 gemini_search 工具逻辑
+            answer = gemini_search(query=query, model=model, timeout_s=timeout_s)
+            return json.dumps({"ok": True, "mode": "gemini_cli", "answer": answer}, ensure_ascii=False)
+        except Exception as e:
+            return json.dumps({"ok": False, "mode": "gemini_cli", "error": str(e)}, ensure_ascii=False)
+
+    # 若提供了密钥，走 GCS 模式
     try:
         params = {
             "key": key,
@@ -606,9 +626,9 @@ def GoogleSearch(query: str, limit: int = 5, cse_id: Optional[str] = None, api_k
                 "link": it.get("link"),
                 "snippet": it.get("snippet"),
             })
-        return json.dumps({"ok": True, "results": results}, ensure_ascii=False)
+        return json.dumps({"ok": True, "mode": "gcs", "results": results}, ensure_ascii=False)
     except Exception as e:
-        return json.dumps({"ok": False, "results": [], "error": str(e)}, ensure_ascii=False)
+        return json.dumps({"ok": False, "mode": "gcs", "results": [], "error": str(e)}, ensure_ascii=False)
 
 if __name__ == "__main__":
     mcp.run()  # 默认 STDIO 传输

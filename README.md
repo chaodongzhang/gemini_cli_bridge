@@ -150,6 +150,8 @@ mcp-cli --server gemini-cli-bridge
 - Web 抓取：`gemini_web_fetch(prompt, urls=[...])`
 - 管理 Gemini CLI 的 MCP：`gemini_mcp_list / gemini_mcp_add / gemini_mcp_remove`
 
+说明：`GoogleSearch` 默认调用 Gemini CLI 内置的 GoogleSearch（无需 Google API 密钥，前提已登录 gemini CLI）。若同时设置了 `GOOGLE_CSE_ID` 与 `GOOGLE_API_KEY`，则切换为 Google Programmable Search 模式。
+
 ### MCP 工具调用请求示例
 
 从任意 MCP 客户端调用 `gemini_prompt_plus` 的 payload 示例：
