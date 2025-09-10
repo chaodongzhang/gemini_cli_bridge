@@ -48,9 +48,9 @@ gemini-cli-bridge
 
 以下示例均为 stdio 方式，命令与路径请按本机实际调整。
 
-### 1) Gemini CLI（内置 MCP 支持）
+### 1) Codex CLI（示例）
 
-编辑项目 `.gemini/settings.json`（或用户 `~/.gemini/settings.json`）：
+如果你使用的 Codex CLI 支持通过配置文件启用 MCP 服务器，可在其配置（例如 `~/.codex/settings.json` 或项目 `.codex/settings.json`，以 Codex 文档为准）中添加：
 
 ```json
 {
@@ -58,15 +58,15 @@ gemini-cli-bridge
     "gemini-cli-bridge": {
       "command": "uvx",
       "args": ["--from", ".", "gemini-cli-bridge"],
+      "env": {"NO_COLOR": "1"},
       "timeout": 60000,
-      "trust": false,
-      "env": {"NO_COLOR": "1"}
+      "trust": false
     }
   }
 }
 ```
 
-重启 `gemini` 后，可让模型调用 `gemini_version` 做健康检查。
+保存后在 Codex 的工具/服务器列表中应该能看到本服务，建议先调用 `gemini_version` 验证健康。
 
 ### 2) Claude Code（VS Code 扩展）
 
