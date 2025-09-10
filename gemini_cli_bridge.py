@@ -18,7 +18,9 @@ from typing import List, Optional, Dict
 
 from fastmcp import FastMCP  # 若你改用官方 SDK，则用: from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("gemini-cli-bridge")
+# 对外展示/握手时的服务名称（客户端列表中显示）。
+# 注意：这不会影响启动命令名（仍为 gemini-cli-bridge），只是显示与识别更友好。
+mcp = FastMCP("Gemini")
 
 # 统一输出截断上限（可通过环境覆盖）
 MAX_OUT = int(os.getenv("MCP_MAX_OUTPUT", "20000"))

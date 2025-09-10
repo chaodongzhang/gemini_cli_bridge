@@ -53,11 +53,11 @@ gemini-cli-bridge
 Codex 通过 TOML 配置文件启用 MCP 服务器：`~/.codex/config.toml`（项目级可用 `.codex/config.toml`）。在该文件中添加：
 
 ```toml
-[mcp_servers.gemini_cli_bridge]
+[mcp_servers.Gemini]
 command = "uvx"
 args = ["--from", ".", "gemini-cli-bridge"]
 
-[mcp_servers.gemini_cli_bridge.env]
+[mcp_servers.Gemini.env]
 NO_COLOR = "1"
 ```
 
@@ -76,7 +76,7 @@ NO_COLOR = "1"
 ```json
 {
   "claude.mcpServers": {
-    "gemini-cli-bridge": {
+  "Gemini": {
       "command": "uvx",
       "args": ["--from", ".", "gemini-cli-bridge"],
       "env": {"NO_COLOR": "1"}
@@ -106,7 +106,7 @@ mcp-cli --server "uvx --from . gemini-cli-bridge"
 ```json
 {
   "mcpServers": {
-    "gemini-cli-bridge": {
+  "Gemini": {
       "command": "uvx",
       "args": ["--from", ".", "gemini-cli-bridge"],
       "env": {"NO_COLOR": "1"}
