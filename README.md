@@ -26,24 +26,38 @@ which gemini && gemini --version
 
 ## 安装与运行
 
-方式 A（推荐，零配置运行）：
+方式 A（推荐，全局安装一次，后续任意目录可用）：
+
+```zsh
+# 使用 uv 将命令安装到全局工具路径
+uv tool install --from . gemini-cli-bridge
+
+# 验证（应能在任意目录执行）
+gemini-cli-bridge
+```
+
+提示：确保将 uv 工具目录加入 PATH。
+
+- macOS（zsh）：
+
+  ```zsh
+  # uv 工具路径通常为：$HOME/Library/Application Support/uv/tools/bin
+  echo 'export PATH="$HOME/Library/Application Support/uv/tools/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+  ```
+
+- Linux：`~/.local/bin` 通常已在 PATH，如无则自行加入。
+
+方式 B（一键试用，本地仓库内运行）：
 
 ```zsh
 # 在仓库根目录一次性运行（uv 会解析 pyproject 并临时安装依赖）
 uvx --from . gemini-cli-bridge
 ```
 
-方式 B（直接运行脚本）：
+方式 C（直接运行脚本）：
 
 ```zsh
 python3 ./gemini_cli_bridge.py
-```
-
-方式 C（作为命令安装后运行，若发布到 PyPI 可用）：
-
-```zsh
-pip install .
-gemini-cli-bridge
 ```
 
 ## 在常见客户端中接入（安装/配置示例）
@@ -56,8 +70,8 @@ Codex 通过 TOML 配置文件启用 MCP 服务器（当前仅支持全局配置
 
 ```toml
 [mcp_servers.Gemini]
-command = "uvx"
-args = ["--from", ".", "gemini-cli-bridge"]
+command = "gemini-cli-bridge"
+args = []
 
 [mcp_servers.Gemini.env]
 NO_COLOR = "1"
@@ -81,8 +95,8 @@ NO_COLOR = "1"
 {
   "claude.mcpServers": {
   "Gemini": {
-      "command": "uvx",
-      "args": ["--from", ".", "gemini-cli-bridge"],
+  "command": "gemini-cli-bridge",
+  "args": [],
       "env": {"NO_COLOR": "1"}
     }
   }
@@ -100,7 +114,7 @@ NO_COLOR = "1"
 npm i -g @modelcontextprotocol/cli
 
 # 启动并连接本服务（示例）
-mcp-cli --server "uvx --from . gemini-cli-bridge"
+mcp-cli --server gemini-cli-bridge
 ```
 
 ### 4) Claude Desktop（可选）
@@ -111,8 +125,8 @@ mcp-cli --server "uvx --from . gemini-cli-bridge"
 {
   "mcpServers": {
   "Gemini": {
-      "command": "uvx",
-      "args": ["--from", ".", "gemini-cli-bridge"],
+  "command": "gemini-cli-bridge",
+  "args": [],
       "env": {"NO_COLOR": "1"}
     }
   }
@@ -196,9 +210,6 @@ args = []
 
 [mcp_servers.Gemini.env]
 NO_COLOR = "1"
-# 可选：网络代理（如需）
-# HTTP_PROXY = "http://127.0.0.1:7890"
-# HTTPS_PROXY = "http://127.0.0.1:7890"
 ```
 
 1) 如果必须使用 uvx，考虑在客户端上调启动/握手超时（若客户端支持），并确保网络可达。
