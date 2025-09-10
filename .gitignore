@@ -27,3 +27,14 @@ logs/
 .vscode/
 .idea/
 *.swp
+
+# Tooling caches & local configs
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+.python-version
+
+# Codex project config (avoid committing local MCP client settings)
+.codex/
