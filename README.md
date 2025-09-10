@@ -2,6 +2,8 @@
 
 一个将本地 Gemini CLI 暴露为 MCP 服务器的小工具，提供常用的 Gemini CLI 包装器与文件/网络实用工具，适配 Gemini CLI、Claude Code（VS Code）等支持 MCP 的客户端。
 
+注意：在各客户端列表/配置中，本服务名称显示为 “Gemini”。启动命令仍为 `gemini-cli-bridge`（或 `uvx --from . gemini-cli-bridge`）。
+
 ## 特性
 
 - 标准 MCP（stdio）服务，开箱即用
@@ -66,6 +68,8 @@ NO_COLOR = "1"
 - 路径：macOS/Linux 为 `~/.codex/config.toml`；Windows 建议使用 WSL，在 `~/.codex/config.toml` 路径下配置。
 - 变更后重启 Codex CLI。第一次使用会提示信任与认证。
 - 在 Codex 中输入提示后，可调用本服务工具；建议先调用 `gemini_version` 做健康检查。
+
+迁移提示：若你之前使用的服务器键名是 `gemini-cli-bridge`，请在配置中将其删除或改名为 `Gemini`，以免重复。
 
 ### 2) Claude Code（VS Code 扩展）
 
