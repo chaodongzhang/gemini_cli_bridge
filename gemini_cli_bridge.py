@@ -17,11 +17,11 @@ from urllib.parse import urlencode, urlparse
 from fastmcp import FastMCP
 
 
-# ---- 常量与 MCP 初始化 -------------------------------------------------------
-MAX_OUT = 200_000  # 截断超长输出，避免客户端卡顿
+# ---- Constants and MCP initialization ---------------------------------------
+MAX_OUT = 200_000  # Truncate long outputs to avoid client lag
 mcp = FastMCP("Gemini")
 
-@mcp.tool()  # 关键改动：必须带括号
+@mcp.tool()  # important: decorator requires parentheses
 def gemini_prompt(
     prompt: str,
     model: str = "gemini-2.5-pro",
@@ -29,7 +29,7 @@ def gemini_prompt(
     timeout_s: int = 120,
     extra_args: Optional[List[str]] = None,
 ) -> str:
-    """调用本地 `gemini` CLI 的非交互接口，返回标准输出文本。"""
+    """Run local `gemini` CLI non-interactively; return stdout text."""
     cmd = ["gemini", "-m", model, "-p", prompt]
     if include_dirs:
         cmd += ["--include-directories", ",".join(include_dirs)]
@@ -41,10 +41,10 @@ def gemini_prompt(
     return str(res["stdout"]).strip()
 
 
-# --- 工具封装与辅助函数 -------------------------------------------------------
+# --- Helpers -----------------------------------------------------------------
 def _env_with_path(extra_env: Optional[Dict[str, str]] = None) -> Dict[str, str]:
     env = os.environ.copy()
-    # 关闭颜色，便于上游（MCP 客户端）解析
+    # Disable colors for easier client parsing
     env["NO_COLOR"] = "1"
     env["PATH"] = env.get("PATH", "") + ":/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
     if extra_env:
@@ -52,17 +52,16 @@ def _env_with_path(extra_env: Optional[Dict[str, str]] = None) -> Dict[str, str]
             if not (isinstance(k, str) and isinstance(v, str)):
                 continue
             if k.upper() == "PATH":
-                # 安全：不允许外部覆盖 PATH
+                # Safety: do not allow overriding PATH
                 continue
             env[k] = v
     return env
 
 
 def _run(cmd: List[str], timeout_s: int = 120, *, env: Optional[Dict[str, str]] = None, cwd: Optional[str] = None) -> Dict[str, object]:
-    """
-    以结构化结果执行子进程命令。
-    返回: {"cmd": [...], "exit_code": int, "stdout": str, "stderr": str}
-    失败时抛出 RuntimeError，包含 stderr 或退出码。
+    """Run subprocess and return structured result.
+    Returns: {cmd: [...], exit_code: int, stdout: str, stderr: str}.
+    Raises RuntimeError on non-zero exit.
     """
     proc = subprocess.run(
         cmd,
@@ -83,23 +82,23 @@ def _run(cmd: List[str], timeout_s: int = 120, *, env: Optional[Dict[str, str]] 
 
 
 def _at_ref(path: str) -> str:
-    """将路径安全地转为 @引用，避免空格/引号导致的断裂。"""
+    """Quote a path as an @"..." reference safely (handles spaces/quotes)."""
     raw = path[1:] if isinstance(path, str) and path.startswith("@") else str(path)
     safe = raw.replace('"', '\\"')
     return f'@"{safe}"'
 
 
 def _is_private_url(url: str) -> bool:
-    """粗略判断 URL 是否解析到内网/回环/链路本地地址，防止 SSRF。"""
+    """Heuristically block private/loopback/link-local URLs (SSRF guard)."""
     try:
         u = urlparse(url)
         if u.scheme not in {"http", "https"}:
             return True
         host = u.hostname or ""
-        # 明确回环/本地域名
+        # Explicit loopback/local hostname
         if host in {"localhost"}:
             return True
-        # 解析所有地址
+        # Resolve all addresses
         for fam, _, _, _, sockaddr in socket.getaddrinfo(host, None):
             ip = sockaddr[0]
             ip_obj = ipaddress.ip_address(ip)
@@ -107,20 +106,20 @@ def _is_private_url(url: str) -> bool:
                 return True
         return False
     except Exception:
-        # 无法解析的 URL 一律视为不安全
+        # Treat unresolvable URLs as unsafe
         return True
 
 
 @mcp.tool()
 def gemini_version(timeout_s: int = 60) -> str:
-    """返回本机已安装的 gemini CLI 版本字符串（等同于: gemini --version）。"""
+    """Return installed gemini CLI version (gemini --version)."""
     res = _run(["gemini", "--version"], timeout_s=timeout_s)
     return res["stdout"].strip()
 
 
 @mcp.tool()
 def gemini_mcp_list(scope: Optional[str] = None, timeout_s: int = 120) -> str:
-    """列出 gemini CLI 中已配置的 MCP 服务器（等同: gemini mcp list）。scope 可选: user|project。"""
+    """List MCP servers configured in gemini CLI (gemini mcp list). Scope: user|project."""
     cmd = ["gemini", "mcp", "list"]
     if scope in {"user", "project"}:
         cmd += ["--scope", scope]
@@ -144,35 +143,32 @@ def gemini_mcp_add(
     exclude_tools: Optional[List[str]] = None,
     timeout_s: int = 120,
 ) -> str:
-    """
-    通过 gemini CLI 新增 MCP 服务器（等同: gemini mcp add ...）。
-    - transport: stdio | http | sse
-    - 对于 stdio: command_or_url 传可执行命令；对于 http/sse: 传 URL。
-    - headers 仅在 http/sse 有效。
-    返回 CLI 标准输出。
+    """Add an MCP server via gemini CLI (gemini mcp add ...).
+    transport: stdio|http|sse; for stdio pass executable, for http/sse pass URL.
+    headers are only valid for http/sse. Returns CLI stdout.
     """
     cmd = ["gemini", "mcp", "add", name]
 
-    # 传输类型
+    # transport
     if transport in {"http", "sse"}:
         cmd += ["--transport", transport, command_or_url]
     else:
-        # 默认 stdio
+    # default: stdio
         cmd += [command_or_url]
         if args:
             cmd += args
 
-    # 作用域
+    # scope
     if scope in {"user", "project"}:
         cmd += ["--scope", scope]
 
-    # 环境变量（多个 -e KEY=VAL）
+    # env vars (-e KEY=VAL)
     if env_vars:
         for k, v in env_vars.items():
             if k and v is not None:
                 cmd += ["-e", f"{k}={v}"]
 
-    # HTTP 头（多个 -H "K: V"）
+    # headers (-H "K: V")
     if headers and transport in {"http", "sse"}:
         for hk, hv in headers.items():
             cmd += ["-H", f"{hk}: {hv}"]
@@ -194,7 +190,7 @@ def gemini_mcp_add(
 
 @mcp.tool()
 def gemini_mcp_remove(name: str, scope: str = "project", timeout_s: int = 120) -> str:
-    """删除 gemini CLI 配置的 MCP 服务器（等同: gemini mcp remove <name>）。"""
+    """Remove an MCP server from gemini CLI (gemini mcp remove <name>)."""
     cmd = ["gemini", "mcp", "remove", name]
     if scope in {"user", "project"}:
         cmd += ["--scope", scope]
@@ -214,13 +210,12 @@ def gemini_web_fetch(
     extra_args: Optional[List[str]] = None,
     timeout_s: int = 180,
 ) -> str:
-    """
-    便捷包装：强制在提示中注入 URL 列表，触发 CLI 的 WebFetch 能力。
-    说明：WebFetch 是 CLI 的内置工具，模型会基于包含的 URL 决定是否调用。
+    """Convenience wrapper: inject URLs into prompt to trigger CLI WebFetch.
+    Note: WebFetch is a CLI built-in; the model decides whether to call it.
     """
     urls = [u for u in (urls or []) if isinstance(u, str) and (u.startswith("http://") or u.startswith("https://"))]
     if not urls:
-        raise ValueError("urls 至少需要一个 http(s) 链接")
+        raise ValueError("urls must contain at least one http(s) link")
 
     composed = f"{prompt.strip()}\n\n" + "\n".join(urls)
     cmd = ["gemini", "-m", model, "-p", composed]
@@ -243,7 +238,7 @@ def gemini_web_fetch(
 
 @mcp.tool()
 def gemini_extensions_list(timeout_s: int = 60) -> str:
-    """列出本机可用的 Gemini CLI 扩展（等同: gemini --list-extensions）。"""
+    """List available Gemini CLI extensions (gemini --list-extensions)."""
     res = _run(["gemini", "--list-extensions"], timeout_s=timeout_s)
     return res["stdout"].strip()
 
@@ -260,10 +255,9 @@ def gemini_prompt_plus(
     extra_args: Optional[List[str]] = None,
     timeout_s: int = 180,
 ) -> str:
-    """
-    高级非交互执行：支持 @附件、审批策略、检查点、目录上下文与额外 flags。
-    - attachments: 传绝对或相对路径，自动转换为 @path 插入到 prompt 文本尾部。
-    - approval_mode: default|auto_edit|yolo；若未设置且 yolo=True，则使用 --yolo。
+    """Advanced non-interactive run with attachments/approval/checkpoint/dirs/flags.
+    - attachments: file/dir paths appended as @path at the end of prompt.
+    - approval_mode: default|auto_edit|yolo; if unset and yolo=True, add --yolo.
     """
     final_prompt = prompt or ""
     if attachments:
@@ -302,9 +296,8 @@ def gemini_search(
     extra_args: Optional[List[str]] = None,
     timeout_s: int = 180,
 ) -> str:
-    """
-    轻量搜索包装：提示模型使用内置 GoogleSearch 工具搜索并给出带引用的答案。
-    注意：是否调用 GoogleSearch 由模型决定；默认 yolo=True 以在非交互环境中自动批准工具调用，避免阻塞。
+    """Lightweight search: guide the model to use built-in GoogleSearch and cite sources.
+    Note: tool invocation is model-driven; default yolo=True to avoid interactive prompts.
     """
     guidance = (
         "Please use the built-in GoogleSearch tool to find up-to-date, authoritative sources, "
@@ -343,10 +336,9 @@ def gemini_prompt_with_memory(
     extra_args: Optional[List[str]] = None,
     timeout_s: int = 180,
 ) -> str:
-    """
-    将指定 memory_paths 作为高优先级上下文注入，再执行非交互推理；可选附件同样以 @path 注入。
-    - memory_paths: 作为“系统/项目记忆”优先注入，适合传递 GEMINI.md 或标准作业/规范等。
-    - attachments: 额外文件/目录内容注入。
+    """Inject memory_paths as high-priority context, then run non-interactively.
+    - memory_paths: authoritative project/system memory (e.g., GEMINI.md, conventions).
+    - attachments: additional files/dirs injected as @path.
     """
     blocks: List[str] = []
     if memory_paths:
@@ -383,11 +375,11 @@ def gemini_prompt_with_memory(
     return res["stdout"].strip()
 
 
-# --- 通用系统/网络工具（按需求定制的集合） ------------------------------------
+# --- General system/network tools --------------------------------------------
 
 @mcp.tool()
 def Shell(cmd: str, cwd: Optional[str] = None, timeout_s: int = 120) -> str:
-    """执行 shell 命令并返回 JSON：{code, stdout, stderr}；默认禁用，设置 MCP_BASH_ALLOW=1 启用。"""
+    """Execute a shell command; return JSON {code, stdout, stderr}. Disabled by default; set MCP_BASH_ALLOW=1 to enable."""
     if os.getenv("MCP_BASH_ALLOW", "0") != "1":
         return json.dumps({"code": 126, "stdout": "", "stderr": "Shell disabled (set MCP_BASH_ALLOW=1)"}, ensure_ascii=False)
     try:
@@ -413,7 +405,7 @@ def Shell(cmd: str, cwd: Optional[str] = None, timeout_s: int = 120) -> str:
 
 @mcp.tool()
 def FindFiles(pattern: str = "*", base: str = ".", recursive: bool = True) -> str:
-    """查找文件：返回 JSON 数组路径列表。支持递归匹配。"""
+    """Find files; return JSON array of paths. Supports recursion."""
     base_path = Path(base).expanduser().resolve()
     try:
         if recursive and "**" not in pattern:
@@ -426,7 +418,7 @@ def FindFiles(pattern: str = "*", base: str = ".", recursive: bool = True) -> st
 
 @mcp.tool()
 def ReadFile(path: str) -> str:
-    """读取文本文件（utf-8，忽略非法字符）。失败抛异常。"""
+    """Read a text file (utf-8, ignore errors). Raises if missing."""
     p = Path(path).expanduser().resolve()
     if not p.exists() or not p.is_file():
         raise FileNotFoundError(str(p))
@@ -435,7 +427,7 @@ def ReadFile(path: str) -> str:
 
 @mcp.tool()
 def ReadFolder(path: str = ".", recursive: bool = False, max_entries: int = 2000) -> str:
-    """读取目录：返回 JSON 路径数组；递归可选。"""
+    """Read a directory; return JSON array of entries (optionally recursive)."""
     root = Path(path).expanduser().resolve()
     items: List[str] = []
     try:
@@ -457,7 +449,7 @@ def ReadFolder(path: str = ".", recursive: bool = False, max_entries: int = 2000
 
 @mcp.tool()
 def ReadManyFiles(paths: List[str], ignore_missing: bool = True) -> str:
-    """批量读取多个文件：返回 JSON 对象 {path: content}。"""
+    """Read multiple files; return JSON object {path: content}."""
     result: Dict[str, str] = {}
     for p0 in paths or []:
         p = Path(str(p0)).expanduser().resolve()
@@ -474,7 +466,7 @@ def ReadManyFiles(paths: List[str], ignore_missing: bool = True) -> str:
 
 @mcp.tool()
 def SaveMemory(path: str, content: str, mode: str = "append") -> str:
-    """保存记忆：将内容写入指定路径；mode=append|overwrite；返回 JSON {ok, bytes}."""
+    """Save content to path; mode=append|overwrite; return JSON {ok, bytes}."""
     p = Path(path).expanduser().resolve()
     p.parent.mkdir(parents=True, exist_ok=True)
     data = content or ""
@@ -491,7 +483,7 @@ def SaveMemory(path: str, content: str, mode: str = "append") -> str:
 
 @mcp.tool()
 def SearchText(pattern: str, path: str, case_insensitive: bool = False) -> str:
-    """在单个文件中搜索文本，返回 JSON 数组 [{line, text}]。"""
+    """Search text within a file; return JSON array [{line, text}]."""
     p = Path(path).expanduser().resolve()
     results: List[Dict[str, object]] = []
     if not p.exists() or not p.is_file():
@@ -509,7 +501,7 @@ def SearchText(pattern: str, path: str, case_insensitive: bool = False) -> str:
 
 @mcp.tool()
 def WriteFile(path: str, content: str) -> str:
-    """写入文本文件（utf-8），必要时创建父目录。返回 ok。"""
+    """Write a UTF-8 text file, creating parents as needed. Return "ok"."""
     p = Path(path).expanduser().resolve()
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(content, encoding="utf-8")
@@ -518,7 +510,7 @@ def WriteFile(path: str, content: str) -> str:
 
 @mcp.tool()
 def Edit(path: str, find: str, replace: str, count: int = 0) -> str:
-    """进行字符串替换，count=0 表示替换全部。返回 JSON：{"replaced": n}。"""
+    """String replace; count=0 means replace all. Return JSON {"replaced": n}."""
     p = Path(path).expanduser().resolve()
     if not p.exists() or not p.is_file():
         raise FileNotFoundError(str(p))
@@ -533,21 +525,21 @@ def Edit(path: str, find: str, replace: str, count: int = 0) -> str:
     return json.dumps({"replaced": replaced}, ensure_ascii=False)
 
 
-# 以上工具集合对应：Edit（已保留）、FindFiles、GoogleSearch（见下）、ReadFile、ReadFolder、ReadManyFiles、SaveMemory、SearchText、Shell、WebFetch、WriteFile。
+# Tools included: Edit, FindFiles, GoogleSearch, ReadFile, ReadFolder, ReadManyFiles, SaveMemory, SearchText, Shell, WebFetch, WriteFile.
 
 
 @mcp.tool()
 def WebFetch(url: str, timeout_s: int = 15) -> str:
-    """最小网页抓取：优先 requests，其次 urllib；返回 JSON {ok,status,content?,error?}。"""
+    """Minimal web fetch: prefer requests, fallback to urllib; return JSON {ok,status,content?,error?}."""
     data: Dict[str, object] = {"url": url, "ok": False, "status": None, "content": None, "error": None}
-    # SSRF 粗略防护
+    # Basic SSRF guard
     if _is_private_url(url):
         data["error"] = "Blocked private/loopback URL"
         return json.dumps(data, ensure_ascii=False)
     headers = {"User-Agent": "gemini-cli-bridge/1.0"}
     try:
         try:
-            import requests  # 可选依赖
+            import requests  # optional dependency
             r = requests.get(url, headers=headers, timeout=timeout_s)
             content = r.text
             if len(content) > MAX_OUT:
@@ -576,23 +568,23 @@ def GoogleSearch(
     timeout_s: int = 120,
     mode: Optional[str] = None,  # auto | gemini_cli | gcs
 ) -> str:
-    """搜索工具（默认优先使用 Gemini CLI 内置 GoogleSearch）。
+    """Search tool (defaults to Gemini CLI built-in GoogleSearch).
 
-    运行模式：
-    - mode="gemini_cli"：强制走 CLI 内置 GoogleSearch（无需密钥，要求本机已登录 gemini CLI）。
-    - mode="gcs"：强制走 Google Programmable Search（需要 GOOGLE_CSE_ID + GOOGLE_API_KEY / 或通过参数传入）。
-    - mode=None 或 "auto"：自动；若检测到密钥则走 gcs，否则走 gemini_cli。
+        Modes:
+        - mode="gemini_cli": force CLI built-in (no keys; requires signed-in gemini CLI)
+        - mode="gcs": force Google Programmable Search (requires GOOGLE_CSE_ID + GOOGLE_API_KEY)
+        - mode=None/"auto": auto-select (use gcs if both keys present, else gemini_cli)
 
-    返回 JSON：
-    - 内置模式：{ ok: true, mode: "gemini_cli", answer: string }
-    - GCS 模式：{ ok: true, mode: "gcs", results: [{title, link, snippet}] }
-      失败：{ ok: false, error, results? }
-    """
+        Returns JSON:
+        - gemini_cli: { ok: true, mode: "gemini_cli", answer: string }
+        - gcs: { ok: true, mode: "gcs", results: [{title, link, snippet}] }
+            on error: { ok: false, error, results? }
+        """
     selected = (mode or "auto").strip().lower()
     cse = cse_id or os.getenv("GOOGLE_CSE_ID")
     key = api_key or os.getenv("GOOGLE_API_KEY")
 
-    # 选择模式
+    # select mode
     use_cli = False
     if selected == "gemini_cli":
         use_cli = True
@@ -601,16 +593,16 @@ def GoogleSearch(
     else:  # auto
         use_cli = not (cse and key)
 
-    # 内置模式：调用 gemini_search（非交互，yolo=True）
+    # built-in path: call gemini_search (non-interactive, yolo=True)
     if use_cli:
         try:
-            # 复用本模块的 gemini_search 工具逻辑
+            # reuse gemini_search tool logic
             answer = gemini_search(query=query, model=model, yolo=True, timeout_s=timeout_s)
             return json.dumps({"ok": True, "mode": "gemini_cli", "answer": answer}, ensure_ascii=False)
         except Exception as e:
             return json.dumps({"ok": False, "mode": "gemini_cli", "error": str(e)}, ensure_ascii=False)
 
-    # GCS 模式（需要 key + cse）
+    # GCS mode (requires key + cse)
     if not (cse and key):
         return json.dumps({
             "ok": False,
@@ -623,7 +615,7 @@ def GoogleSearch(
             "key": key,
             "cx": cse,
             "q": query,
-            "num": max(1, min(int(limit or 5), 10)),  # API 单次最多 10
+            "num": max(1, min(int(limit or 5), 10)),  # API allows up to 10 per call
         }
         url = f"https://www.googleapis.com/customsearch/v1?{urlencode(params)}"
         headers = {"User-Agent": "gemini-cli-bridge/1.0"}
@@ -645,7 +637,7 @@ def GoogleSearch(
         return json.dumps({"ok": False, "mode": "gcs", "results": [], "error": str(e)}, ensure_ascii=False)
 
 if __name__ == "__main__":
-    mcp.run()  # 默认 STDIO 传输
+    mcp.run()  # default STDIO transport
 
 # 供 console_script 使用
 def main() -> None:

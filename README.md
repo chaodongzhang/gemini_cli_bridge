@@ -1,79 +1,79 @@
 # Gemini CLI MCP Bridge
 
-一个将本地 Gemini CLI 暴露为 MCP 服务器的小工具，提供常用的 Gemini CLI 包装器与文件/网络实用工具，适配 Gemini CLI、Claude Code（VS Code）等支持 MCP 的客户端。
+[English] | [简体中文](./README.zh-CN.md)
 
-注意：在各客户端列表/配置中，本服务名称显示为 “Gemini”。启动命令仍为 `gemini-cli-bridge`（或 `uvx --from . gemini-cli-bridge`）。
+> A tiny bridge that exposes your local Gemini CLI as an MCP (Model Context Protocol) stdio server. It wraps common Gemini CLI flows and adds handy file/network utilities for tools-capable clients like Codex CLI and Claude Code.
 
-## 特性
+Note: In client UIs and configs, the server is displayed as "Gemini" while the command remains `gemini-cli-bridge` (or `uvx --from . gemini-cli-bridge`).
 
-- 标准 MCP（stdio）服务，开箱即用
-- 封装常用 Gemini CLI 操作：版本查询、Prompt、WebFetch/Search、MCP 管理等
-- 内置实用工具：读写文件、目录遍历、简单抓取、文本搜索、可选 Shell（默认禁用）
-- 兼容 uv/uvx 一次性运行，免手动装依赖
+## Features
 
-## 前置条件
+- Standard MCP (stdio) server
+- Thin wrappers for common Gemini CLI flows: version, prompt, WebFetch/Search, MCP management
+- Utilities: read/write files, list folders, simple web fetch, text search, optional Shell (disabled by default)
+- Runs with uv/uvx without manually installing dependencies
 
-- Python 3.10+（建议 3.11+）
-- 已安装并完成认证的 Gemini CLI（用于真正调用模型）
-- macOS 推荐将 Homebrew bin 加入 PATH：`/opt/homebrew/bin`
+## Prerequisites
 
-快速自检：
+- Python 3.10+ (3.11+ recommended)
+- Gemini CLI installed and authenticated (used to call the actual model)
+- On macOS, ensure Homebrew bin is in PATH: `/opt/homebrew/bin`
+
+Quick checks:
 
 ```zsh
 python3 --version
 which gemini && gemini --version
 ```
 
-## 安装与运行
+## Install & Run
 
-在开始之前，先将仓库克隆到本地：
+Clone first:
 
 ```zsh
 git clone https://github.com/chaodongzhang/gemini_cli_bridge.git
 cd gemini_cli_bridge
 ```
 
-方式 A（推荐，全局安装一次，后续任意目录可用）：
+Option A (recommended, global install):
 
 ```zsh
-# 使用 uv 将命令安装到全局工具路径
 uv tool install --from . gemini-cli-bridge
 
-# 验证（应能在任意目录执行）
+# Verify (should work from any directory)
 gemini-cli-bridge
 ```
 
-提示：确保将 uv 工具目录加入 PATH。
+Add uv tools dir to PATH if needed.
 
-- macOS（zsh）：
+- macOS (zsh):
 
   ```zsh
-  # uv 工具路径通常为：$HOME/Library/Application Support/uv/tools/bin
+  # Typically: $HOME/Library/Application Support/uv/tools/bin
   echo 'export PATH="$HOME/Library/Application Support/uv/tools/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
   ```
 
-- Linux：`~/.local/bin` 通常已在 PATH，如无则自行加入。
+- Linux: usually `~/.local/bin`.
 
-方式 B（一键试用，本地仓库内运行）：
+Option B (one-off run via uvx):
 
 ```zsh
-# 在仓库根目录一次性运行（uv 会解析 pyproject 并临时安装依赖）
 uvx --from . gemini-cli-bridge
 ```
 
-方式 C（直接运行脚本）：
+Option C (run the script directly):
 
 ```zsh
 python3 ./gemini_cli_bridge.py
 ```
 
-## 在常见客户端中接入（安装/配置示例）
+## Use with common clients (stdio)
 
-以下示例均为 stdio 方式，命令与路径请按本机实际调整。
+Examples below use stdio; adjust command/paths for your system.
 
-### 1) Codex CLI（官方建议的 MCP 配置）
+### 1) Codex CLI (global TOML)
 
-Codex 通过 TOML 配置文件启用 MCP 服务器（当前仅支持全局配置）：`~/.codex/config.toml`。在该文件中添加：
+`~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.Gemini]
@@ -84,82 +84,66 @@ args = []
 NO_COLOR = "1"
 ```
 
-说明：
+Notes:
 
-- 路径：目前仅支持全局 `~/.codex/config.toml`（macOS/Linux）。Windows 建议使用 WSL，并在其家目录下同一路径配置。
-- 截至 2025-09-10，Codex 尚不自动加载“项目目录内的 .codex/config.toml”。如需此能力，请关注社区提案与后续版本更新。
-- 变更后重启 Codex CLI。第一次使用会提示信任与认证。
-- 在 Codex 中输入提示后，可调用本服务工具；建议先调用 `gemini_version` 做健康检查。
+- As of 2025-09-10, Codex only supports a global `~/.codex/config.toml`.
+- Restart Codex after changes. Use `gemini_version` as a quick health check.
 
+### 2) Claude Code (VS Code extension)
 
-### 2) Claude Code（VS Code 扩展）
-
-安装 VS Code 与 Claude Code 扩展（在扩展市场搜索“Claude Code”并安装）。
-
-在 VS Code 用户设置 JSON 中添加（命令面板：Preferences: Open User Settings (JSON)）：
+User Settings (JSON):
 
 ```json
 {
   "claude.mcpServers": {
-  "Gemini": {
-  "command": "gemini-cli-bridge",
-  "args": [],
-      "env": {"NO_COLOR": "1"}
+    "Gemini": {
+      "command": "gemini-cli-bridge",
+      "args": [],
+      "env": { "NO_COLOR": "1" }
     }
   }
 }
 ```
 
-保存后在 Claude 侧边栏的工具/服务器列表中可见；尝试调用 `gemini_version` 验证。
-
-### 3) 通用 MCP CLI（用于本地调试）
-
-以开源 MCP CLI 为例（任选其一的 CLI 工具）：
+### 3) Generic MCP CLI (for local testing)
 
 ```zsh
-# 安装某个通用 MCP CLI（示例命令，按工具文档调整）
 npm i -g @modelcontextprotocol/cli
-
-# 启动并连接本服务（示例）
 mcp-cli --server gemini-cli-bridge
 ```
 
-### 4) Claude Desktop（可选）
-
-多数版本支持在配置文件中添加：
+### 4) Claude Desktop (optional)
 
 ```json
 {
   "mcpServers": {
-  "Gemini": {
-  "command": "gemini-cli-bridge",
-  "args": [],
-      "env": {"NO_COLOR": "1"}
+    "Gemini": {
+      "command": "gemini-cli-bridge",
+      "args": [],
+      "env": { "NO_COLOR": "1" }
     }
   }
 }
 ```
 
-若路径/键名与版本差异，请以应用内文档为准。
+## Typical usage (from clients)
 
-## 典型用法（在客户端内）
+- Version: `gemini_version`
+- Non-interactive prompt: `gemini_prompt(prompt=..., model="gemini-2.5-pro")`
+- Advanced prompt with attachments/approval: `gemini_prompt_plus(...)`
+- Web fetch: `gemini_web_fetch(prompt, urls=[...])`
+- Manage Gemini CLI MCP: `gemini_mcp_list / gemini_mcp_add / gemini_mcp_remove`
+- Google search: `GoogleSearch(query="...", limit=5)` (defaults to CLI built-in)
 
-- 查询版本：`gemini_version`
-- 非交互推理：`gemini_prompt(prompt=..., model="gemini-2.5-pro")`
-- 附件/审批等高级推理：`gemini_prompt_plus(...)`
-- Web 抓取：`gemini_web_fetch(prompt, urls=[...])`
-- 管理 Gemini CLI 的 MCP：`gemini_mcp_list / gemini_mcp_add / gemini_mcp_remove`
-- 使用 Google 搜索：`GoogleSearch(query="...", limit=5)`（默认走 Gemini CLI 内置，无需密钥）
+Notes about GoogleSearch:
 
-说明：
+- By default it uses Gemini CLI’s built-in GoogleSearch (no Google API keys needed, assuming you’re logged in to the CLI).
+- If both `GOOGLE_CSE_ID` and `GOOGLE_API_KEY` are set (env or args), it switches to Google Programmable Search (CSE).
+- You can force the mode via `mode`: `"gemini_cli" | "gcs" | "auto"` (default auto).
 
-- `GoogleSearch` 默认调用 Gemini CLI 内置的 GoogleSearch（无需 Google API 密钥，前提已登录 gemini CLI）。
-- 若同时设置了 `GOOGLE_CSE_ID` 与 `GOOGLE_API_KEY`（来自环境或参数），会切换为 Google Programmable Search 模式（CSE）。
-- 你也可以通过 `mode` 参数显式指定：`"gemini_cli" | "gcs" | "auto"`（默认 auto）。
+### MCP tool call examples
 
-### MCP 工具调用请求示例
-
-从任意 MCP 客户端调用 `gemini_prompt_plus` 的 payload 示例：
+`gemini_prompt_plus` payload example:
 
 ```json
 {
@@ -171,109 +155,49 @@ mcp-cli --server gemini-cli-bridge
 }
 ```
 
-调用 `GoogleSearch` 的最小 payload 示例（默认使用 CLI 内置 GoogleSearch）：
+Minimal `GoogleSearch` payload (defaults to CLI built-in):
 
 ```json
 {
   "name": "GoogleSearch",
   "arguments": {
-    "query": "泽塔科技",
+    "query": "Acme Corp",
     "limit": 5
   }
 }
 ```
 
-强制走内置搜索（无需密钥）的示例：
+Force built-in mode (no keys):
 
 ```json
 {
   "name": "GoogleSearch",
   "arguments": {
-    "query": "今日大模型行业新闻",
+    "query": "today ai industry news",
     "limit": 5,
     "mode": "gemini_cli"
   }
 }
 ```
 
-## 常见问题
+## Troubleshooting startup/handshake timeouts
 
-1. 找不到 gemini 或权限问题
+- Prefer installed command over `uvx --from .` to avoid cold-start dependency resolution.
+- Increase client startup/handshake timeouts if supported.
+- PATH issues on macOS: ensure `/opt/homebrew/bin` or set PATH in client env.
 
-```zsh
-which gemini
-gemini --version
-echo $PATH
-```
+## Make sure it uses CLI built-in search (avoid unintended CSE mode)
 
-Apple Silicon 常见：将 `/opt/homebrew/bin` 加入 PATH，或在客户端配置中为本服务显式设置 PATH。
+Possible causes:
 
-1. 未登录/未授权
+- Another tool named `GoogleSearch` from a different server/extension.
+- Your environment sets both `GOOGLE_API_KEY` and `GOOGLE_CSE_ID`, which switches this bridge into CSE mode.
 
-```zsh
-gemini  # 按提示完成一次登录
-```
+What to do:
 
-1. 代理/超时
+1) Explicitly clear two vars in your MCP config
 
-可通过工具参数 `timeout_s` 或 `extra_args: ["--proxy=http://..."]` 调整。
-
-## 启动/握手超时排查（MCP client failed to start: request timed out）
-
-常见原因：
-
-- 使用 `uvx --from . gemini-cli-bridge` 冷启动时需要解析依赖，首次/网络慢时可能超过客户端握手超时。
-- 网络访问受限导致依赖解析缓慢。
-- 客户端默认握手超时较短。
-
-建议修复：
-
-1) 预安装后使用已安装命令，避免每次 uvx 解析
-
-```zsh
-# 二选一（开发态可用 -e）
-pip install .
-# pip install -e .
-
-# 或使用 pipx/uv 工具将脚本安装为独立命令
-# pipx install .
-# uv tool install --from . gemini-cli-bridge
-```
-
-将 Codex 全局配置 `~/.codex/config.toml` 调整为直接调用已安装命令：
-
-```toml
-[mcp_servers.Gemini]
-command = "gemini-cli-bridge"
-args = []
-
-[mcp_servers.Gemini.env]
-NO_COLOR = "1"
-```
-
-1) 如果必须使用 uvx，考虑在客户端上调启动/握手超时（若客户端支持），并确保网络可达。
-
-1) 本地快速自检：
-
-```zsh
-gemini-cli-bridge   # 启动服务，应快速常驻
-which gemini && gemini --version
-```
-
-1) PATH 问题：将 `/opt/homebrew/bin` 加入 PATH，或在客户端配置中通过 env 显式设置。
-
-## 避免 IDE 误走 CSE 模式（提示还需要 GOOGLE_API_KEY / GOOGLE_CSE_ID）
-
-可能原因：
-
-- IDE 里存在多个同名 `GoogleSearch` 工具（非本桥接的会要求 CSE Key）。
-- 你的 shell/IDE 环境里设置了 `GOOGLE_API_KEY` 与 `GOOGLE_CSE_ID`，触发了本工具的 CSE 模式。
-
-建议做法：
-
-1) 在 MCP 配置里显式清空这两个变量，确保走 CLI 内置搜索
-
-Codex（`~/.codex/config.toml`）：
+Codex (`~/.codex/config.toml`):
 
 ```toml
 [mcp_servers.Gemini]
@@ -286,7 +210,7 @@ GOOGLE_API_KEY = ""
 GOOGLE_CSE_ID = ""
 ```
 
-Claude Code（VS Code 用户设置 JSON）：
+Claude Code (VS Code settings JSON):
 
 ```json
 {
@@ -300,19 +224,19 @@ Claude Code（VS Code 用户设置 JSON）：
 }
 ```
 
-1. 在对话中点名使用“服务器 Gemini 的 GoogleSearch”
+1. Disambiguate in prompts
 
-例：请使用 MCP 服务器“Gemini”的“GoogleSearch”进行搜索。
+Ask explicitly: “Use GoogleSearch from MCP server ‘Gemini’ …”.
 
-1. 验证是否走了 CLI 内置搜索
+1. Verify the path taken
 
-- 先调用 `gemini_version`（应返回 `gemini --version`）。
-- 再调用 `GoogleSearch(query="test", limit=3)`，返回 JSON 中应出现 `"mode":"gemini_cli"`（表示走的是 CLI 内置），而不是 `"mode":"gcs"`。
+- Call `gemini_version` (should return `gemini --version`).
+- Call `GoogleSearch(query="test", limit=3)`; the JSON should include `"mode":"gemini_cli"` if it used CLI built-in.
 
-1. 避免工具名冲突（可选）
+1. Avoid tool name conflicts (optional)
 
-若 IDE 里还有别的 `GoogleSearch`，可在脚本中将函数改名为 `GeminiGoogleSearch`（函数名即工具名），从根源上消除同名路由冲突。
+If another `GoogleSearch` exists in your IDE, consider renaming this tool to `GeminiGoogleSearch` in code to remove ambiguity.
 
-## 许可
+## License
 
 MIT
