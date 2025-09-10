@@ -165,6 +165,53 @@ gemini  # 按提示完成一次登录
 
 可通过工具参数 `timeout_s` 或 `extra_args: ["--proxy=http://..."]` 调整。
 
+## 启动/握手超时排查（MCP client failed to start: request timed out）
+
+常见原因：
+
+- 使用 `uvx --from . gemini-cli-bridge` 冷启动时需要解析依赖，首次/网络慢时可能超过客户端握手超时。
+- 网络访问受限导致依赖解析缓慢。
+- 客户端默认握手超时较短。
+
+建议修复：
+
+1) 预安装后使用已安装命令，避免每次 uvx 解析
+
+```zsh
+# 二选一（开发态可用 -e）
+pip install .
+# pip install -e .
+
+# 或使用 pipx/uv 工具将脚本安装为独立命令
+# pipx install .
+# uv tool install --from . gemini-cli-bridge
+```
+
+将 Codex 全局配置 `~/.codex/config.toml` 调整为直接调用已安装命令：
+
+```toml
+[mcp_servers.Gemini]
+command = "gemini-cli-bridge"
+args = []
+
+[mcp_servers.Gemini.env]
+NO_COLOR = "1"
+# 可选：网络代理（如需）
+# HTTP_PROXY = "http://127.0.0.1:7890"
+# HTTPS_PROXY = "http://127.0.0.1:7890"
+```
+
+1) 如果必须使用 uvx，考虑在客户端上调启动/握手超时（若客户端支持），并确保网络可达。
+
+1) 本地快速自检：
+
+```zsh
+gemini-cli-bridge   # 启动服务，应快速常驻
+which gemini && gemini --version
+```
+
+1) PATH 问题：将 `/opt/homebrew/bin` 加入 PATH，或在客户端配置中通过 env 显式设置。
+
 ## 许可
 
 MIT
