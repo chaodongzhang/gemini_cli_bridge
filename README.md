@@ -48,25 +48,24 @@ gemini-cli-bridge
 
 以下示例均为 stdio 方式，命令与路径请按本机实际调整。
 
-### 1) Codex CLI（示例）
+### 1) Codex CLI（官方建议的 MCP 配置）
 
-如果你使用的 Codex CLI 支持通过配置文件启用 MCP 服务器，可在其配置（例如 `~/.codex/settings.json` 或项目 `.codex/settings.json`，以 Codex 文档为准）中添加：
+Codex 通过 TOML 配置文件启用 MCP 服务器：`~/.codex/config.toml`（项目级可用 `.codex/config.toml`）。在该文件中添加：
 
-```json
-{
-  "mcpServers": {
-    "gemini-cli-bridge": {
-      "command": "uvx",
-      "args": ["--from", ".", "gemini-cli-bridge"],
-      "env": {"NO_COLOR": "1"},
-      "timeout": 60000,
-      "trust": false
-    }
-  }
-}
+```toml
+[mcp_servers.gemini_cli_bridge]
+command = "uvx"
+args = ["--from", ".", "gemini-cli-bridge"]
+
+[mcp_servers.gemini_cli_bridge.env]
+NO_COLOR = "1"
 ```
 
-保存后在 Codex 的工具/服务器列表中应该能看到本服务，建议先调用 `gemini_version` 验证健康。
+说明：
+
+- 路径：macOS/Linux 为 `~/.codex/config.toml`；Windows 建议使用 WSL，在 `~/.codex/config.toml` 路径下配置。
+- 变更后重启 Codex CLI。第一次使用会提示信任与认证。
+- 在 Codex 中输入提示后，可调用本服务工具；建议先调用 `gemini_version` 做健康检查。
 
 ### 2) Claude Code（VS Code 扩展）
 
