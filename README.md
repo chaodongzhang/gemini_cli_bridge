@@ -52,7 +52,7 @@ gemini-cli-bridge
 
 ### 1) Codex CLI（官方建议的 MCP 配置）
 
-Codex 通过 TOML 配置文件启用 MCP 服务器：`~/.codex/config.toml`（项目级可用 `.codex/config.toml`）。在该文件中添加：
+Codex 通过 TOML 配置文件启用 MCP 服务器（当前仅支持全局配置）：`~/.codex/config.toml`。在该文件中添加：
 
 ```toml
 [mcp_servers.Gemini]
@@ -65,11 +65,11 @@ NO_COLOR = "1"
 
 说明：
 
-- 路径：macOS/Linux 为 `~/.codex/config.toml`；Windows 建议使用 WSL，在 `~/.codex/config.toml` 路径下配置。
+- 路径：目前仅支持全局 `~/.codex/config.toml`（macOS/Linux）。Windows 建议使用 WSL，并在其家目录下同一路径配置。
+- 截至 2025-09-10，Codex 尚不自动加载“项目目录内的 .codex/config.toml”。如需此能力，请关注社区提案与后续版本更新。
 - 变更后重启 Codex CLI。第一次使用会提示信任与认证。
 - 在 Codex 中输入提示后，可调用本服务工具；建议先调用 `gemini_version` 做健康检查。
 
-迁移提示：若你之前使用的服务器键名是 `gemini-cli-bridge`，请在配置中将其删除或改名为 `Gemini`，以免重复。
 
 ### 2) Claude Code（VS Code 扩展）
 
