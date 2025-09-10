@@ -126,6 +126,20 @@ mcp-cli --server "uvx --from . gemini-cli-bridge"
 - Web 抓取：`gemini_web_fetch(prompt, urls=[...])`
 - 管理 Gemini CLI 的 MCP：`gemini_mcp_list / gemini_mcp_add / gemini_mcp_remove`
 
+### MCP 工具调用请求示例
+
+从任意 MCP 客户端调用 `gemini_prompt_plus` 的 payload 示例：
+
+```json
+{
+  "name": "gemini_prompt_plus",
+  "arguments": {
+    "prompt": "hello",
+    "extra_args": ["--debug", "--proxy=http://127.0.0.1:7890"]
+  }
+}
+```
+
 ## 常见问题
 
 1. 找不到 gemini 或权限问题
@@ -151,13 +165,3 @@ gemini  # 按提示完成一次登录
 ## 许可
 
 MIT
-
-```json
-{
-  "name": "gemini_prompt_plus",
-  "arguments": {
-    "prompt": "hello",
-    "extra_args": ["--debug", "--proxy=http://127.0.0.1:7890"]
-  }
-}
-```
