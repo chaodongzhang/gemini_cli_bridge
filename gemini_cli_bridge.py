@@ -18,18 +18,84 @@ from fastmcp import FastMCP
 
 
 # ---- Constants and MCP initialization ---------------------------------------
-MAX_OUT = 200_000  # Truncate long outputs to avoid client lag
+_DEFAULT_MAX_OUT = 200_000  # default truncation length
 mcp = FastMCP("Gemini")
+
+
+# --- Config helpers -----------------------------------------------------------
+def _get_int_env(name: str, default: int) -> int:
+    try:
+        val = int(str(os.getenv(name, "")).strip())
+        if val > 0:
+            return val
+    except Exception:
+        pass
+    return int(default)
+
+
+def get_max_out() -> int:
+    """Return configured output truncation length.
+
+    Env: GEMINI_BRIDGE_MAX_OUT (int, >0). Default: _DEFAULT_MAX_OUT.
+    """
+    return _get_int_env("GEMINI_BRIDGE_MAX_OUT", _DEFAULT_MAX_OUT)
+
+
+def _truncate(s: Optional[str]) -> str:
+    """Truncate string to configured length with marker when needed."""
+    if s is None:
+        return ""
+    limit = get_max_out()
+    if len(s) <= limit:
+        return s
+    return s[:limit] + "\n...[truncated]..."
+
+
+def _allowed_path_prefixes() -> tuple:
+    """Whitelist for extending PATH via env, safe-by-default.
+
+    - Defaults to common system prefixes.
+    - Can extend via GEMINI_BRIDGE_ALLOWED_PATH_PREFIXES (colon-separated).
+    """
+    defaults = [
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/bin",
+        "/sbin",
+    ]
+    extra = []
+    raw = os.getenv("GEMINI_BRIDGE_ALLOWED_PATH_PREFIXES", "").strip()
+    if raw:
+        for p in raw.split(":"):
+            p = p.strip()
+            if p and os.path.isabs(p):
+                extra.append(p)
+    # de-dup while preserving order
+    seen = set()
+    items = []
+    for p in [*defaults, *extra]:
+        if p not in seen:
+            seen.add(p)
+            items.append(p)
+    return tuple(items)
+
+
+def _unify_timeout(provided: Optional[int], default: int) -> int:
+    """Return final timeout: provided > env > default."""
+    if isinstance(provided, int) and provided > 0:
+        return provided
+    return _get_int_env("GEMINI_BRIDGE_DEFAULT_TIMEOUT_S", default)
 
 @mcp.tool()  # important: decorator requires parentheses
 def gemini_prompt(
     prompt: str,
     model: str = "gemini-2.5-pro",
     include_dirs: Optional[List[str]] = None,
-    timeout_s: int = 120,
+    timeout_s: Optional[int] = None,
     extra_args: Optional[List[str]] = None,
 ) -> str:
-    """Run local `gemini` CLI non-interactively; return stdout text."""
+    """Run local `gemini` CLI non-interactively; return structured JSON."""
     cmd = ["gemini", "-m", model, "-p", prompt]
     if include_dirs:
         cmd += ["--include-directories", ",".join(include_dirs)]
@@ -37,8 +103,14 @@ def gemini_prompt(
         for a in extra_args:
             if isinstance(a, str) and a.startswith("-"):
                 cmd.append(a)
-    res = _run(cmd, timeout_s=timeout_s)
-    return str(res["stdout"]).strip()
+    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
+    ok = res.get("exit_code", 1) == 0
+    return json.dumps({
+        "ok": ok,
+        "exit_code": res.get("exit_code"),
+        "stdout": str(res.get("stdout", "")).strip(),
+        "stderr": str(res.get("stderr", "")).strip(),
+    }, ensure_ascii=False)
 
 
 # --- Helpers -----------------------------------------------------------------
@@ -46,7 +118,28 @@ def _env_with_path(extra_env: Optional[Dict[str, str]] = None) -> Dict[str, str]
     env = os.environ.copy()
     # Disable colors for easier client parsing
     env["NO_COLOR"] = "1"
-    env["PATH"] = env.get("PATH", "") + ":/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+    base_path = env.get("PATH", "")
+    # default safe additions
+    base_path = base_path + ":/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+
+    # Optional: allow extending PATH via a safe whitelist
+    extras_raw = os.getenv("GEMINI_BRIDGE_EXTRA_PATHS", "").strip()
+    if extras_raw:
+        allowed = _allowed_path_prefixes()
+        extras: List[str] = []
+        for p in extras_raw.split(":"):
+            p = p.strip()
+            if not p:
+                continue
+            try:
+                rp = os.path.realpath(p)
+                if os.path.isabs(rp) and any(rp.startswith(pref) for pref in allowed) and os.path.isdir(rp):
+                    extras.append(rp)
+            except Exception:
+                continue
+        if extras:
+            base_path = base_path + ":" + ":".join(extras)
+    env["PATH"] = base_path
     if extra_env:
         for k, v in extra_env.items():
             if not (isinstance(k, str) and isinstance(v, str)):
@@ -58,26 +151,36 @@ def _env_with_path(extra_env: Optional[Dict[str, str]] = None) -> Dict[str, str]
     return env
 
 
-def _run(cmd: List[str], timeout_s: int = 120, *, env: Optional[Dict[str, str]] = None, cwd: Optional[str] = None) -> Dict[str, object]:
+def _run(
+    cmd: List[str],
+    timeout_s: Optional[int] = None,
+    *,
+    env: Optional[Dict[str, str]] = None,
+    cwd: Optional[str] = None,
+    raise_on_error: bool = True,
+) -> Dict[str, object]:
     """Run subprocess and return structured result.
     Returns: {cmd: [...], exit_code: int, stdout: str, stderr: str}.
-    Raises RuntimeError on non-zero exit.
+    When raise_on_error is True, raises RuntimeError on non-zero exit.
     """
+    to = _unify_timeout(timeout_s, default=120)
     proc = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
-        timeout=timeout_s,
+        timeout=to,
         env=_env_with_path(env),
         cwd=cwd,
     )
-    if proc.returncode != 0:
-        raise RuntimeError(proc.stderr.strip() or f"command exit {proc.returncode}: {' '.join(cmd)}")
+    out = _truncate(proc.stdout)
+    err = _truncate(proc.stderr)
+    if raise_on_error and proc.returncode != 0:
+        raise RuntimeError(err.strip() or f"command exit {proc.returncode}: {' '.join(cmd)}")
     return {
         "cmd": cmd,
         "exit_code": proc.returncode,
-        "stdout": proc.stdout,
-        "stderr": proc.stderr,
+        "stdout": out,
+        "stderr": err,
     }
 
 
@@ -111,20 +214,32 @@ def _is_private_url(url: str) -> bool:
 
 
 @mcp.tool()
-def gemini_version(timeout_s: int = 60) -> str:
-    """Return installed gemini CLI version (gemini --version)."""
-    res = _run(["gemini", "--version"], timeout_s=timeout_s)
-    return res["stdout"].strip()
+def gemini_version(timeout_s: Optional[int] = None) -> str:
+    """Return installed gemini CLI version (gemini --version) as JSON."""
+    res = _run(["gemini", "--version"], timeout_s=timeout_s, raise_on_error=False)
+    ok = res.get("exit_code", 1) == 0
+    return json.dumps({
+        "ok": ok,
+        "exit_code": res.get("exit_code"),
+        "stdout": str(res.get("stdout", "")).strip(),
+        "stderr": str(res.get("stderr", "")).strip(),
+    }, ensure_ascii=False)
 
 
 @mcp.tool()
-def gemini_mcp_list(scope: Optional[str] = None, timeout_s: int = 120) -> str:
+def gemini_mcp_list(scope: Optional[str] = None, timeout_s: Optional[int] = None) -> str:
     """List MCP servers configured in gemini CLI (gemini mcp list). Scope: user|project."""
     cmd = ["gemini", "mcp", "list"]
     if scope in {"user", "project"}:
         cmd += ["--scope", scope]
-    res = _run(cmd, timeout_s=timeout_s)
-    return res["stdout"].strip()
+    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
+    ok = res.get("exit_code", 1) == 0
+    return json.dumps({
+        "ok": ok,
+        "exit_code": res.get("exit_code"),
+        "stdout": str(res.get("stdout", "")).strip(),
+        "stderr": str(res.get("stderr", "")).strip(),
+    }, ensure_ascii=False)
 
 
 @mcp.tool()
@@ -141,7 +256,7 @@ def gemini_mcp_add(
     description: Optional[str] = None,
     include_tools: Optional[List[str]] = None,
     exclude_tools: Optional[List[str]] = None,
-    timeout_s: int = 120,
+    timeout_s: Optional[int] = None,
 ) -> str:
     """Add an MCP server via gemini CLI (gemini mcp add ...).
     transport: stdio|http|sse; for stdio pass executable, for http/sse pass URL.
@@ -184,18 +299,30 @@ def gemini_mcp_add(
     if exclude_tools:
         cmd += ["--exclude-tools", ",".join(exclude_tools)]
 
-    res = _run(cmd, timeout_s=timeout_s)
-    return res["stdout"].strip()
+    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
+    ok = res.get("exit_code", 1) == 0
+    return json.dumps({
+        "ok": ok,
+        "exit_code": res.get("exit_code"),
+        "stdout": str(res.get("stdout", "")).strip(),
+        "stderr": str(res.get("stderr", "")).strip(),
+    }, ensure_ascii=False)
 
 
 @mcp.tool()
-def gemini_mcp_remove(name: str, scope: str = "project", timeout_s: int = 120) -> str:
+def gemini_mcp_remove(name: str, scope: str = "project", timeout_s: Optional[int] = None) -> str:
     """Remove an MCP server from gemini CLI (gemini mcp remove <name>)."""
     cmd = ["gemini", "mcp", "remove", name]
     if scope in {"user", "project"}:
         cmd += ["--scope", scope]
-    res = _run(cmd, timeout_s=timeout_s)
-    return res["stdout"].strip()
+    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
+    ok = res.get("exit_code", 1) == 0
+    return json.dumps({
+        "ok": ok,
+        "exit_code": res.get("exit_code"),
+        "stdout": str(res.get("stdout", "")).strip(),
+        "stderr": str(res.get("stderr", "")).strip(),
+    }, ensure_ascii=False)
 
 
 @mcp.tool()
@@ -208,7 +335,7 @@ def gemini_web_fetch(
     yolo: bool = False,
     checkpointing: bool = False,
     extra_args: Optional[List[str]] = None,
-    timeout_s: int = 180,
+    timeout_s: Optional[int] = None,
 ) -> str:
     """Convenience wrapper: inject URLs into prompt to trigger CLI WebFetch.
     Note: WebFetch is a CLI built-in; the model decides whether to call it.
@@ -232,15 +359,27 @@ def gemini_web_fetch(
             if isinstance(a, str) and a.startswith("-"):
                 cmd.append(a)
 
-    res = _run(cmd, timeout_s=timeout_s)
-    return res["stdout"].strip()
+    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
+    ok = res.get("exit_code", 1) == 0
+    return json.dumps({
+        "ok": ok,
+        "exit_code": res.get("exit_code"),
+        "stdout": str(res.get("stdout", "")).strip(),
+        "stderr": str(res.get("stderr", "")).strip(),
+    }, ensure_ascii=False)
 
 
 @mcp.tool()
-def gemini_extensions_list(timeout_s: int = 60) -> str:
+def gemini_extensions_list(timeout_s: Optional[int] = None) -> str:
     """List available Gemini CLI extensions (gemini --list-extensions)."""
-    res = _run(["gemini", "--list-extensions"], timeout_s=timeout_s)
-    return res["stdout"].strip()
+    res = _run(["gemini", "--list-extensions"], timeout_s=timeout_s, raise_on_error=False)
+    ok = res.get("exit_code", 1) == 0
+    return json.dumps({
+        "ok": ok,
+        "exit_code": res.get("exit_code"),
+        "stdout": str(res.get("stdout", "")).strip(),
+        "stderr": str(res.get("stderr", "")).strip(),
+    }, ensure_ascii=False)
 
 
 @mcp.tool()
@@ -253,7 +392,7 @@ def gemini_prompt_plus(
     yolo: bool = False,
     checkpointing: bool = False,
     extra_args: Optional[List[str]] = None,
-    timeout_s: int = 180,
+    timeout_s: Optional[int] = None,
 ) -> str:
     """Advanced non-interactive run with attachments/approval/checkpoint/dirs/flags.
     - attachments: file/dir paths appended as @path at the end of prompt.
@@ -281,8 +420,14 @@ def gemini_prompt_plus(
             if isinstance(a, str) and a.startswith("-"):
                 cmd.append(a)
 
-    res = _run(cmd, timeout_s=timeout_s)
-    return res["stdout"].strip()
+    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
+    ok = res.get("exit_code", 1) == 0
+    return json.dumps({
+        "ok": ok,
+        "exit_code": res.get("exit_code"),
+        "stdout": str(res.get("stdout", "")).strip(),
+        "stderr": str(res.get("stderr", "")).strip(),
+    }, ensure_ascii=False)
 
 
 @mcp.tool()
@@ -294,7 +439,7 @@ def gemini_search(
     yolo: bool = True,
     checkpointing: bool = False,
     extra_args: Optional[List[str]] = None,
-    timeout_s: int = 180,
+    timeout_s: Optional[int] = None,
 ) -> str:
     """Lightweight search: guide the model to use built-in GoogleSearch and cite sources.
     Note: tool invocation is model-driven; default yolo=True to avoid interactive prompts.
@@ -319,8 +464,14 @@ def gemini_search(
         for a in extra_args:
             if isinstance(a, str) and a.startswith("-"):
                 cmd.append(a)
-    res = _run(cmd, timeout_s=timeout_s)
-    return res["stdout"].strip()
+    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
+    ok = res.get("exit_code", 1) == 0
+    return json.dumps({
+        "ok": ok,
+        "exit_code": res.get("exit_code"),
+        "stdout": str(res.get("stdout", "")).strip(),
+        "stderr": str(res.get("stderr", "")).strip(),
+    }, ensure_ascii=False)
 
 
 @mcp.tool()
@@ -371,18 +522,25 @@ def gemini_prompt_with_memory(
         for a in extra_args:
             if isinstance(a, str) and a.startswith("-"):
                 cmd.append(a)
-    res = _run(cmd, timeout_s=timeout_s)
-    return res["stdout"].strip()
+    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
+    ok = res.get("exit_code", 1) == 0
+    return json.dumps({
+        "ok": ok,
+        "exit_code": res.get("exit_code"),
+        "stdout": str(res.get("stdout", "")).strip(),
+        "stderr": str(res.get("stderr", "")).strip(),
+    }, ensure_ascii=False)
 
 
 # --- General system/network tools --------------------------------------------
 
 @mcp.tool()
-def Shell(cmd: str, cwd: Optional[str] = None, timeout_s: int = 120) -> str:
+def Shell(cmd: str, cwd: Optional[str] = None, timeout_s: Optional[int] = None) -> str:
     """Execute a shell command; return JSON {code, stdout, stderr}. Disabled by default; set MCP_BASH_ALLOW=1 to enable."""
     if os.getenv("MCP_BASH_ALLOW", "0") != "1":
         return json.dumps({"code": 126, "stdout": "", "stderr": "Shell disabled (set MCP_BASH_ALLOW=1)"}, ensure_ascii=False)
     try:
+        to = _unify_timeout(timeout_s, default=120)
         completed = subprocess.run(
             cmd,
             shell=True,
@@ -390,14 +548,10 @@ def Shell(cmd: str, cwd: Optional[str] = None, timeout_s: int = 120) -> str:
             env=_env_with_path({}),
             capture_output=True,
             text=True,
-            timeout=timeout_s,
+            timeout=to,
         )
-        stdout = completed.stdout
-        stderr = completed.stderr
-        if len(stdout) > MAX_OUT:
-            stdout = stdout[:MAX_OUT] + "\n...[truncated]..."
-        if len(stderr) > MAX_OUT:
-            stderr = stderr[:MAX_OUT] + "\n...[truncated]..."
+        stdout = _truncate(completed.stdout)
+        stderr = _truncate(completed.stderr)
         return json.dumps({"code": completed.returncode, "stdout": stdout, "stderr": stderr}, ensure_ascii=False)
     except subprocess.TimeoutExpired:
         return json.dumps({"code": 124, "stdout": "", "stderr": f"timeout after {timeout_s}s"}, ensure_ascii=False)
@@ -635,6 +789,19 @@ def GoogleSearch(
         return json.dumps({"ok": True, "mode": "gcs", "results": results}, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"ok": False, "mode": "gcs", "results": [], "error": str(e)}, ensure_ascii=False)
+
+@mcp.tool()
+def GeminiGoogleSearch(
+    query: str,
+    limit: int = 5,
+    cse_id: Optional[str] = None,
+    api_key: Optional[str] = None,
+    model: str = "gemini-2.5-pro",
+    timeout_s: Optional[int] = None,
+    mode: Optional[str] = None,
+) -> str:
+    """Alias to GoogleSearch to avoid tool name collisions in some IDEs."""
+    return GoogleSearch(query=query, limit=limit, cse_id=cse_id, api_key=api_key, model=model, timeout_s=timeout_s, mode=mode)
 
 if __name__ == "__main__":
     mcp.run()  # default STDIO transport

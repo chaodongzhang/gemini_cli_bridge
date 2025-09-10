@@ -134,6 +134,12 @@ mcp-cli --server gemini-cli-bridge
 - Web fetch: `gemini_web_fetch(prompt, urls=[...])`
 - Manage Gemini CLI MCP: `gemini_mcp_list / gemini_mcp_add / gemini_mcp_remove`
 - Google search: `GoogleSearch(query="...", limit=5)` (defaults to CLI built-in)
+- Alias to avoid tool name conflicts: `GeminiGoogleSearch(...)` (same args as `GoogleSearch`)
+
+Return shape note (wrappers):
+- Gemini CLI wrappers now return structured JSON: `{ "ok", "exit_code", "stdout", "stderr" }`.
+  Tools affected: `gemini_version`, `gemini_prompt`, `gemini_prompt_plus`, `gemini_prompt_with_memory`,
+  `gemini_search`, `gemini_web_fetch`, `gemini_extensions_list`, `gemini_mcp_list/add/remove`.
 
 Notes about GoogleSearch:
 
@@ -162,6 +168,18 @@ Minimal `GoogleSearch` payload (defaults to CLI built-in):
   "name": "GoogleSearch",
   "arguments": {
     "query": "Acme Corp",
+    "limit": 5
+  }
+}
+```
+
+Use the alias to avoid naming conflicts in some IDEs:
+
+```json
+{
+  "name": "GeminiGoogleSearch",
+  "arguments": {
+    "query": "today ai industry news",
     "limit": 5
   }
 }
@@ -236,6 +254,17 @@ Ask explicitly: “Use GoogleSearch from MCP server ‘Gemini’ …”.
 1. Avoid tool name conflicts (optional)
 
 If another `GoogleSearch` exists in your IDE, consider renaming this tool to `GeminiGoogleSearch` in code to remove ambiguity.
+
+## Configuration (env)
+
+- `GEMINI_BRIDGE_MAX_OUT` (int > 0): unified output truncation length. Default 200000.
+- `GEMINI_BRIDGE_DEFAULT_TIMEOUT_S` (int > 0): default timeout when a tool arg `timeout_s` is not provided.
+- `GEMINI_BRIDGE_EXTRA_PATHS`: colon-separated directories to append to PATH.
+- `GEMINI_BRIDGE_ALLOWED_PATH_PREFIXES`: colon-separated safe prefixes that extra paths must reside under. Defaults include `/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/sbin`.
+
+Notes
+- PATH cannot be overridden directly by tools; only appended via the whitelist above.
+- Shell tool remains disabled unless `MCP_BASH_ALLOW=1`.
 
 ## License
 

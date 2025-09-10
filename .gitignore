@@ -38,3 +38,6 @@ coverage.xml
 
 # Codex project config (avoid committing local MCP client settings)
 .codex/
+
+# Local notes
+AGENTS.md

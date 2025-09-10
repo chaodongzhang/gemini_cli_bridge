@@ -150,6 +150,12 @@ mcp-cli --server gemini-cli-bridge
 - Web 抓取：`gemini_web_fetch(prompt, urls=[...])`
 - 管理 Gemini CLI 的 MCP：`gemini_mcp_list / gemini_mcp_add / gemini_mcp_remove`
 - 使用 Google 搜索：`GoogleSearch(query="...", limit=5)`（默认走 Gemini CLI 内置，无需密钥）
+- 避免工具名冲突的别名：`GeminiGoogleSearch(...)`（与 `GoogleSearch` 参数相同）
+
+返回值说明（封装 CLI 的工具）：
+- 以上 Gemini CLI 封装工具统一返回结构化 JSON：`{"ok", "exit_code", "stdout", "stderr"}`。
+  适用于：`gemini_version`、`gemini_prompt`、`gemini_prompt_plus`、`gemini_prompt_with_memory`、
+  `gemini_search`、`gemini_web_fetch`、`gemini_extensions_list`、`gemini_mcp_list/add/remove`。
 
 说明：
 
@@ -192,6 +198,18 @@ mcp-cli --server gemini-cli-bridge
     "query": "今日大模型行业新闻",
     "limit": 5,
     "mode": "gemini_cli"
+  }
+}
+```
+
+使用别名以避免在部分 IDE 中与其它扩展同名：
+
+```json
+{
+  "name": "GeminiGoogleSearch",
+  "arguments": {
+    "query": "今日大模型行业新闻",
+    "limit": 5
   }
 }
 ```
@@ -312,6 +330,17 @@ Claude Code（VS Code 用户设置 JSON）：
 1. 避免工具名冲突（可选）
 
 若 IDE 里还有别的 `GoogleSearch`，可在脚本中将函数改名为 `GeminiGoogleSearch`（函数名即工具名），从根源上消除同名路由冲突。
+
+## 配置（环境变量）
+
+- `GEMINI_BRIDGE_MAX_OUT`（>0）：统一输出截断上限，默认 200000。
+- `GEMINI_BRIDGE_DEFAULT_TIMEOUT_S`（>0）：工具未显式传 `timeout_s` 时的默认超时。
+- `GEMINI_BRIDGE_EXTRA_PATHS`：以冒号分隔的额外 PATH 目录（将被追加）。
+- `GEMINI_BRIDGE_ALLOWED_PATH_PREFIXES`：允许的安全前缀（冒号分隔）。额外目录必须位于这些前缀或系统常见路径（`/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/sbin`）之下。
+
+注意
+- 工具不允许直接覆盖 PATH；仅能通过上述白名单追加。
+- Shell 工具默认禁用，除非设置 `MCP_BASH_ALLOW=1`。
 
 ## 许可
 
