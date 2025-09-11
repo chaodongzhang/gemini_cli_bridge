@@ -300,7 +300,7 @@ If another `GoogleSearch` exists in your IDE, consider renaming this tool to `Ge
 ### Publishing
 
 - GitHub Release: push a tag like `v0.1.x` to trigger artifact build and release.
-- PyPI: same tag push triggers publish via `pypa/gh-action-pypi-publish`. Configure repository secret `PYPI_API_TOKEN`.
+- PyPI: supports Trusted Publisher (OIDC). Push a tag `v*` to publish via `pypa/gh-action-pypi-publish` (no API token needed once Trusted Publisher is configured on PyPI). 
 - See `CHANGELOG.md` for version history.
 
 ## Configuration (env)

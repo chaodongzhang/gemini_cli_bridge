@@ -376,7 +376,7 @@ Claude Code（VS Code 用户设置 JSON）：
 ### 发布
 
 - GitHub Release：推送 `v0.1.x` 格式的标签自动构建产物并创建发行版。
-- PyPI：同一标签会触发发布至 PyPI（`pypa/gh-action-pypi-publish`）。请在仓库 `Actions secrets` 配置 `PYPI_API_TOKEN`。
+- PyPI：支持 Trusted Publisher（OIDC）。在 PyPI 项目里添加 GitHub 可信发布者后，仅需推送 `v*` 标签即可发布到 PyPI（无需在 GitHub 保存 Token）。
 - 版本变更请参考 `CHANGELOG.md`。
 
 ## 配置（环境变量）
