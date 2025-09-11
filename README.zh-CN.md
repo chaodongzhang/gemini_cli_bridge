@@ -31,30 +31,23 @@ which gemini && gemini --version
 
 ## 安装与运行
 
-通过 PyPI 安装（推荐）：
+### 快速安装（PyPI）
 
-```zsh
-pip install gemini-cli-bridge
+- 使用 pip：
+  - `pip install gemini-cli-bridge`
+  - 启动：`gemini-cli-bridge`（Ctrl+C 退出）
+- 使用 pipx（隔离安装）：
+  - `pipx install gemini-cli-bridge`
+  - `gemini-cli-bridge`
 
-# 验证
-gemini-cli-bridge
-```
-
-或使用 pipx 隔离安装：
-
-```zsh
-pipx install gemini-cli-bridge
-gemini-cli-bridge
-```
-
-在开始之前，先将仓库克隆到本地：
+开发流程：克隆仓库（需要从源码安装或开发时）
 
 ```zsh
 git clone https://github.com/chaodongzhang/gemini_cli_bridge.git
 cd gemini_cli_bridge
 ```
 
-方式 A（推荐，从仓库安装为全局命令）：
+从源码安装（开发场景）
 
 ```zsh
 # 使用 uv 将命令安装到全局工具路径
@@ -75,14 +68,14 @@ gemini-cli-bridge
 
 - Linux：`~/.local/bin` 通常已在 PATH，如无则自行加入。
 
-方式 B（一键试用，本地仓库内运行）：
+一次性试用（uvx，无需安装）
 
 ```zsh
 # 在仓库根目录一次性运行（uv 会解析 pyproject 并临时安装依赖）
 uvx --from . gemini-cli-bridge
 ```
 
-方式 C（直接运行脚本）：
+直接运行（仓库内）
 
 ```zsh
 python3 ./gemini_cli_bridge.py
@@ -91,7 +84,13 @@ python3 ./gemini_cli_bridge.py
 发行版下载
 
 - 可在 GitHub Releases 页面获取预构建 wheel 和源码包：
-  https://github.com/chaodongzhang/gemini_cli_bridge/releases
+ https://github.com/chaodongzhang/gemini_cli_bridge/releases
+
+注意
+
+- 进程以前台常驻方式运行，按 Ctrl+C 退出。
+- macOS 请确保 `/opt/homebrew/bin` 在 PATH 中。
+- uv 工具目录（如需手动加入）：`$HOME/Library/Application Support/uv/tools/bin`。
 
 ## 在常见客户端中接入（安装/配置示例）
 

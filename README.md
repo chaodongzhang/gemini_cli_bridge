@@ -33,21 +33,14 @@ which gemini && gemini --version
 
 ## Install & Run
 
-PyPI (recommended):
+### Quick install (PyPI)
 
-```zsh
-pip install gemini-cli-bridge
-
-# Verify
-gemini-cli-bridge
-```
-
-Or with pipx:
-
-```zsh
-pipx install gemini-cli-bridge
-gemini-cli-bridge
-```
+- pip
+  - `pip install gemini-cli-bridge`
+  - Start: `gemini-cli-bridge` (Ctrl+C to exit)
+- pipx (isolated)
+  - `pipx install gemini-cli-bridge`
+  - `gemini-cli-bridge`
 
 Clone first:
 
@@ -56,7 +49,14 @@ git clone https://github.com/chaodongzhang/gemini_cli_bridge.git
 cd gemini_cli_bridge
 ```
 
-Option A (recommended, global install from repo):
+Clone repository (for dev workflows):
+
+```zsh
+git clone https://github.com/chaodongzhang/gemini_cli_bridge.git
+cd gemini_cli_bridge
+```
+
+From source (dev), install as a global tool via uv:
 
 ```zsh
 uv tool install --from . gemini-cli-bridge
@@ -76,13 +76,13 @@ Add uv tools dir to PATH if needed.
 
 - Linux: usually `~/.local/bin`.
 
-Option B (one-off run via uvx):
+One-off try (uvx, no install):
 
 ```zsh
 uvx --from . gemini-cli-bridge
 ```
 
-Option C (run the script directly):
+Direct run (repo checkout):
 
 ```zsh
 python3 ./gemini_cli_bridge.py
@@ -92,6 +92,12 @@ Release downloads
 
 - Prebuilt wheels and source tarballs are available on GitHub Releases:
   https://github.com/chaodongzhang/gemini_cli_bridge/releases
+
+Notes
+
+- Runs in foreground; press Ctrl+C to stop.
+- On macOS ensure `/opt/homebrew/bin` is on PATH.
+- uv tools bin (if needed): `$HOME/Library/Application Support/uv/tools/bin`.
 
 ## Use with common clients (stdio)
 
