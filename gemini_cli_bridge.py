@@ -103,14 +103,7 @@ def gemini_prompt(
         for a in extra_args:
             if isinstance(a, str) and a.startswith("-"):
                 cmd.append(a)
-    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
-    ok = res.get("exit_code", 1) == 0
-    return json.dumps({
-        "ok": ok,
-        "exit_code": res.get("exit_code"),
-        "stdout": str(res.get("stdout", "")).strip(),
-        "stderr": str(res.get("stderr", "")).strip(),
-    }, ensure_ascii=False)
+    return _run_gemini_and_format_output(cmd, timeout_s=timeout_s)
 
 
 # --- Helpers -----------------------------------------------------------------
@@ -184,6 +177,21 @@ def _run(
     }
 
 
+def _run_gemini_and_format_output(cmd: List[str], timeout_s: Optional[int] = None) -> str:
+    """Runs a gemini command and returns the standardized JSON response."""
+    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
+    ok = res.get("exit_code", 1) == 0
+    return json.dumps(
+        {
+            "ok": ok,
+            "exit_code": res.get("exit_code"),
+            "stdout": str(res.get("stdout", "")).strip(),
+            "stderr": str(res.get("stderr", "")).strip(),
+        },
+        ensure_ascii=False,
+    )
+
+
 def _at_ref(path: str) -> str:
     """Quote a path as an @"..." reference safely (handles spaces/quotes)."""
     raw = path[1:] if isinstance(path, str) and path.startswith("@") else str(path)
@@ -216,14 +224,7 @@ def _is_private_url(url: str) -> bool:
 @mcp.tool()
 def gemini_version(timeout_s: Optional[int] = None) -> str:
     """Return installed gemini CLI version (gemini --version) as JSON."""
-    res = _run(["gemini", "--version"], timeout_s=timeout_s, raise_on_error=False)
-    ok = res.get("exit_code", 1) == 0
-    return json.dumps({
-        "ok": ok,
-        "exit_code": res.get("exit_code"),
-        "stdout": str(res.get("stdout", "")).strip(),
-        "stderr": str(res.get("stderr", "")).strip(),
-    }, ensure_ascii=False)
+    return _run_gemini_and_format_output(["gemini", "--version"], timeout_s=timeout_s)
 
 
 @mcp.tool()
@@ -232,14 +233,7 @@ def gemini_mcp_list(scope: Optional[str] = None, timeout_s: Optional[int] = None
     cmd = ["gemini", "mcp", "list"]
     if scope in {"user", "project"}:
         cmd += ["--scope", scope]
-    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
-    ok = res.get("exit_code", 1) == 0
-    return json.dumps({
-        "ok": ok,
-        "exit_code": res.get("exit_code"),
-        "stdout": str(res.get("stdout", "")).strip(),
-        "stderr": str(res.get("stderr", "")).strip(),
-    }, ensure_ascii=False)
+    return _run_gemini_and_format_output(cmd, timeout_s=timeout_s)
 
 
 @mcp.tool()
@@ -298,15 +292,7 @@ def gemini_mcp_add(
         cmd += ["--include-tools", ",".join(include_tools)]
     if exclude_tools:
         cmd += ["--exclude-tools", ",".join(exclude_tools)]
-
-    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
-    ok = res.get("exit_code", 1) == 0
-    return json.dumps({
-        "ok": ok,
-        "exit_code": res.get("exit_code"),
-        "stdout": str(res.get("stdout", "")).strip(),
-        "stderr": str(res.get("stderr", "")).strip(),
-    }, ensure_ascii=False)
+    return _run_gemini_and_format_output(cmd, timeout_s=timeout_s)
 
 
 @mcp.tool()
@@ -315,14 +301,7 @@ def gemini_mcp_remove(name: str, scope: str = "project", timeout_s: Optional[int
     cmd = ["gemini", "mcp", "remove", name]
     if scope in {"user", "project"}:
         cmd += ["--scope", scope]
-    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
-    ok = res.get("exit_code", 1) == 0
-    return json.dumps({
-        "ok": ok,
-        "exit_code": res.get("exit_code"),
-        "stdout": str(res.get("stdout", "")).strip(),
-        "stderr": str(res.get("stderr", "")).strip(),
-    }, ensure_ascii=False)
+    return _run_gemini_and_format_output(cmd, timeout_s=timeout_s)
 
 
 @mcp.tool()
@@ -358,28 +337,13 @@ def gemini_web_fetch(
         for a in extra_args:
             if isinstance(a, str) and a.startswith("-"):
                 cmd.append(a)
-
-    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
-    ok = res.get("exit_code", 1) == 0
-    return json.dumps({
-        "ok": ok,
-        "exit_code": res.get("exit_code"),
-        "stdout": str(res.get("stdout", "")).strip(),
-        "stderr": str(res.get("stderr", "")).strip(),
-    }, ensure_ascii=False)
+    return _run_gemini_and_format_output(cmd, timeout_s=timeout_s)
 
 
 @mcp.tool()
 def gemini_extensions_list(timeout_s: Optional[int] = None) -> str:
     """List available Gemini CLI extensions (gemini --list-extensions)."""
-    res = _run(["gemini", "--list-extensions"], timeout_s=timeout_s, raise_on_error=False)
-    ok = res.get("exit_code", 1) == 0
-    return json.dumps({
-        "ok": ok,
-        "exit_code": res.get("exit_code"),
-        "stdout": str(res.get("stdout", "")).strip(),
-        "stderr": str(res.get("stderr", "")).strip(),
-    }, ensure_ascii=False)
+    return _run_gemini_and_format_output(["gemini", "--list-extensions"], timeout_s=timeout_s)
 
 
 @mcp.tool()
@@ -419,15 +383,7 @@ def gemini_prompt_plus(
         for a in extra_args:
             if isinstance(a, str) and a.startswith("-"):
                 cmd.append(a)
-
-    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
-    ok = res.get("exit_code", 1) == 0
-    return json.dumps({
-        "ok": ok,
-        "exit_code": res.get("exit_code"),
-        "stdout": str(res.get("stdout", "")).strip(),
-        "stderr": str(res.get("stderr", "")).strip(),
-    }, ensure_ascii=False)
+    return _run_gemini_and_format_output(cmd, timeout_s=timeout_s)
 
 
 @mcp.tool()
@@ -464,14 +420,7 @@ def gemini_search(
         for a in extra_args:
             if isinstance(a, str) and a.startswith("-"):
                 cmd.append(a)
-    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
-    ok = res.get("exit_code", 1) == 0
-    return json.dumps({
-        "ok": ok,
-        "exit_code": res.get("exit_code"),
-        "stdout": str(res.get("stdout", "")).strip(),
-        "stderr": str(res.get("stderr", "")).strip(),
-    }, ensure_ascii=False)
+    return _run_gemini_and_format_output(cmd, timeout_s=timeout_s)
 
 
 @mcp.tool()
@@ -522,14 +471,7 @@ def gemini_prompt_with_memory(
         for a in extra_args:
             if isinstance(a, str) and a.startswith("-"):
                 cmd.append(a)
-    res = _run(cmd, timeout_s=timeout_s, raise_on_error=False)
-    ok = res.get("exit_code", 1) == 0
-    return json.dumps({
-        "ok": ok,
-        "exit_code": res.get("exit_code"),
-        "stdout": str(res.get("stdout", "")).strip(),
-        "stderr": str(res.get("stderr", "")).strip(),
-    }, ensure_ascii=False)
+    return _run_gemini_and_format_output(cmd, timeout_s=timeout_s)
 
 
 # --- General system/network tools --------------------------------------------
@@ -684,7 +626,7 @@ def Edit(path: str, find: str, replace: str, count: int = 0) -> str:
 
 @mcp.tool()
 def WebFetch(url: str, timeout_s: int = 15) -> str:
-    """Minimal web fetch: prefer requests, fallback to urllib; return JSON {ok,status,content?,error?}."""
+    """Minimal web fetch using the requests library; return JSON {ok,status,content?,error?}."""
     data: Dict[str, object] = {"url": url, "ok": False, "status": None, "content": None, "error": None}
     # Basic SSRF guard
     if _is_private_url(url):
@@ -692,21 +634,13 @@ def WebFetch(url: str, timeout_s: int = 15) -> str:
         return json.dumps(data, ensure_ascii=False)
     headers = {"User-Agent": "gemini-cli-bridge/1.0"}
     try:
-        try:
-            import requests  # optional dependency
-            r = requests.get(url, headers=headers, timeout=timeout_s)
-            content = r.text
-            if len(content) > MAX_OUT:
-                content = content[:MAX_OUT] + "\n...[truncated]..."
-            data.update({"ok": bool(r.ok), "status": r.status_code, "content": content})
-        except Exception:
-            req = urllib.request.Request(url, headers=headers)
-            with contextlib.closing(urllib.request.urlopen(req, timeout=timeout_s)) as resp:
-                charset = resp.headers.get_content_charset() or "utf-8"
-                body = resp.read().decode(charset, errors="ignore")
-                if len(body) > MAX_OUT:
-                    body = body[:MAX_OUT] + "\n...[truncated]..."
-                data.update({"ok": True, "status": getattr(resp, "status", 200), "content": body})
+        import requests  # keep import local
+        r = requests.get(url, headers=headers, timeout=timeout_s)
+        content = r.text
+        limit = get_max_out()  # use configured max output
+        if len(content) > limit:
+            content = content[:limit] + "\n...[truncated]..."
+        data.update({"ok": bool(r.ok), "status": r.status_code, "content": content})
     except Exception as e:
         data["error"] = str(e)
     return json.dumps(data, ensure_ascii=False)

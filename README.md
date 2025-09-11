@@ -255,6 +255,22 @@ Ask explicitly: “Use GoogleSearch from MCP server ‘Gemini’ …”.
 
 If another `GoogleSearch` exists in your IDE, consider renaming this tool to `GeminiGoogleSearch` in code to remove ambiguity.
 
+## Developer Notes
+
+- Standardized gemini wrapper output
+  - Use the helper `_run_gemini_and_format_output(cmd, timeout_s)` for all `gemini_*` tools to return a consistent JSON shape: `{ ok, exit_code, stdout, stderr }`.
+  - When adding new Gemini CLI wrappers, focus on building the `cmd` list and delegate execution/formatting to the helper.
+
+- WebFetch behavior
+  - Uses `requests` and respects `GEMINI_BRIDGE_MAX_OUT` for truncation via `get_max_out()`.
+  - Blocks private/loopback/link-local targets using `_is_private_url`.
+  - Returns `{ ok, status, content?, error? }`.
+
+- Running tests
+  - `pytest -q` after installing dev deps, or run without installing by setting `PYTHONPATH`:
+    - `PYTHONPATH=.::tests pytest -q`
+  - A lightweight `tests/fastmcp.py` shim is included so tests run without installing external packages.
+
 ## Configuration (env)
 
 - `GEMINI_BRIDGE_MAX_OUT` (int > 0): unified output truncation length. Default 200000.

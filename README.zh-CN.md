@@ -331,6 +331,22 @@ Claude Code（VS Code 用户设置 JSON）：
 
 若 IDE 里还有别的 `GoogleSearch`，可在脚本中将函数改名为 `GeminiGoogleSearch`（函数名即工具名），从根源上消除同名路由冲突。
 
+## 开发者说明
+
+- 统一的 gemini 包装器输出
+  - 新增辅助函数 `_run_gemini_and_format_output(cmd, timeout_s)`，所有 `gemini_*` 工具应使用它返回统一 JSON：`{ ok, exit_code, stdout, stderr }`。
+  - 新增/扩展 Gemini CLI 封装时，专注于构建 `cmd`，执行与格式化交给该辅助函数。
+
+- WebFetch 行为
+  - 仅使用 `requests` 进行抓取；通过 `get_max_out()` 遵循 `GEMINI_BRIDGE_MAX_OUT` 进行截断。
+  - 通过 `_is_private_url` 拦截内网/环回/链路本地等地址。
+  - 返回 `{ ok, status, content?, error? }`。
+
+- 运行测试
+  - 安装开发依赖后直接运行：`pytest -q`；或无需安装，设置 `PYTHONPATH`：
+    - `PYTHONPATH=.::tests pytest -q`
+  - 仓库内提供轻量 `tests/fastmcp.py`，便于在未安装外部依赖时运行测试。
+
 ## 配置（环境变量）
 
 - `GEMINI_BRIDGE_MAX_OUT`（>0）：统一输出截断上限，默认 200000。
