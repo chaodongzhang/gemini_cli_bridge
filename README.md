@@ -1,5 +1,10 @@
 # Gemini CLI MCP Bridge
 
+[![PyPI](https://img.shields.io/pypi/v/gemini-cli-bridge.svg)](https://pypi.org/project/gemini-cli-bridge/)
+[![CI](https://github.com/chaodongzhang/gemini_cli_bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/chaodongzhang/gemini_cli_bridge/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/chaodongzhang/gemini_cli_bridge)](https://github.com/chaodongzhang/gemini_cli_bridge/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+
 [English] | [简体中文](./README.zh-CN.md)
 
 > A tiny bridge that exposes your local Gemini CLI as an MCP (Model Context Protocol) stdio server. It wraps common Gemini CLI flows and adds handy file/network utilities for tools-capable clients like Codex CLI and Claude Code.
@@ -291,6 +296,12 @@ If another `GoogleSearch` exists in your IDE, consider renaming this tool to `Ge
   - `pytest -q` after installing dev deps, or run without installing by setting `PYTHONPATH`:
     - `PYTHONPATH=.::tests pytest -q`
   - A lightweight `tests/fastmcp.py` shim is included so tests run without installing external packages.
+
+### Publishing
+
+- GitHub Release: push a tag like `v0.1.x` to trigger artifact build and release.
+- PyPI: same tag push triggers publish via `pypa/gh-action-pypi-publish`. Configure repository secret `PYPI_API_TOKEN`.
+- See `CHANGELOG.md` for version history.
 
 ## Configuration (env)
 

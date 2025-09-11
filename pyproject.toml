@@ -7,6 +7,23 @@ requires-python = ">=3.10"
 readme = "README.md"
 keywords = ["MCP", "Gemini", "CLI", "bridge"]
 license = {text = "MIT"}
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Environment :: Console",
+]
+urls = {
+  "Homepage" = "https://github.com/chaodongzhang/gemini_cli_bridge",
+  "Repository" = "https://github.com/chaodongzhang/gemini_cli_bridge",
+  "Issues" = "https://github.com/chaodongzhang/gemini_cli_bridge/issues",
+}
 dependencies = [
   "fastmcp>=0.3.0",
   # 可选：用于 WebFetch/WebSearch（如果用不到可移除）

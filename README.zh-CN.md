@@ -1,5 +1,10 @@
 # Gemini CLI MCP Bridge
 
+[![PyPI](https://img.shields.io/pypi/v/gemini-cli-bridge.svg)](https://pypi.org/project/gemini-cli-bridge/)
+[![CI](https://github.com/chaodongzhang/gemini_cli_bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/chaodongzhang/gemini_cli_bridge/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/chaodongzhang/gemini_cli_bridge)](https://github.com/chaodongzhang/gemini_cli_bridge/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+
 一个将本地 Gemini CLI 暴露为 MCP 服务器的小工具，提供常用的 Gemini CLI 包装器与文件/网络实用工具，适配 Gemini CLI、Claude Code（VS Code）等支持 MCP 的客户端。
 
 注意：在各客户端列表/配置中，本服务名称显示为 “Gemini”。启动命令仍为 `gemini-cli-bridge`（或 `uvx --from . gemini-cli-bridge`）。
@@ -367,6 +372,12 @@ Claude Code（VS Code 用户设置 JSON）：
   - 安装开发依赖后直接运行：`pytest -q`；或无需安装，设置 `PYTHONPATH`：
     - `PYTHONPATH=.::tests pytest -q`
   - 仓库内提供轻量 `tests/fastmcp.py`，便于在未安装外部依赖时运行测试。
+
+### 发布
+
+- GitHub Release：推送 `v0.1.x` 格式的标签自动构建产物并创建发行版。
+- PyPI：同一标签会触发发布至 PyPI（`pypa/gh-action-pypi-publish`）。请在仓库 `Actions secrets` 配置 `PYPI_API_TOKEN`。
+- 版本变更请参考 `CHANGELOG.md`。
 
 ## 配置（环境变量）
 
