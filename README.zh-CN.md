@@ -26,6 +26,22 @@ which gemini && gemini --version
 
 ## 安装与运行
 
+通过 PyPI 安装（推荐）：
+
+```zsh
+pip install gemini-cli-bridge
+
+# 验证
+gemini-cli-bridge
+```
+
+或使用 pipx 隔离安装：
+
+```zsh
+pipx install gemini-cli-bridge
+gemini-cli-bridge
+```
+
 在开始之前，先将仓库克隆到本地：
 
 ```zsh
@@ -33,7 +49,7 @@ git clone https://github.com/chaodongzhang/gemini_cli_bridge.git
 cd gemini_cli_bridge
 ```
 
-方式 A（推荐，全局安装一次，后续任意目录可用）：
+方式 A（推荐，从仓库安装为全局命令）：
 
 ```zsh
 # 使用 uv 将命令安装到全局工具路径
@@ -41,7 +57,7 @@ uv tool install --from . gemini-cli-bridge
 
 # 验证（应能在任意目录执行）
 gemini-cli-bridge
-```
+ ```
 
 提示：确保将 uv 工具目录加入 PATH。
 
@@ -50,7 +66,7 @@ gemini-cli-bridge
   ```zsh
   # uv 工具路径通常为：$HOME/Library/Application Support/uv/tools/bin
   echo 'export PATH="$HOME/Library/Application Support/uv/tools/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
-  ```
+ ```
 
 - Linux：`~/.local/bin` 通常已在 PATH，如无则自行加入。
 
@@ -66,6 +82,11 @@ uvx --from . gemini-cli-bridge
 ```zsh
 python3 ./gemini_cli_bridge.py
 ```
+
+发行版下载
+
+- 可在 GitHub Releases 页面获取预构建 wheel 和源码包：
+  https://github.com/chaodongzhang/gemini_cli_bridge/releases
 
 ## 在常见客户端中接入（安装/配置示例）
 

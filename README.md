@@ -28,6 +28,22 @@ which gemini && gemini --version
 
 ## Install & Run
 
+PyPI (recommended):
+
+```zsh
+pip install gemini-cli-bridge
+
+# Verify
+gemini-cli-bridge
+```
+
+Or with pipx:
+
+```zsh
+pipx install gemini-cli-bridge
+gemini-cli-bridge
+```
+
 Clone first:
 
 ```zsh
@@ -35,7 +51,7 @@ git clone https://github.com/chaodongzhang/gemini_cli_bridge.git
 cd gemini_cli_bridge
 ```
 
-Option A (recommended, global install):
+Option A (recommended, global install from repo):
 
 ```zsh
 uv tool install --from . gemini-cli-bridge
@@ -66,6 +82,11 @@ Option C (run the script directly):
 ```zsh
 python3 ./gemini_cli_bridge.py
 ```
+
+Release downloads
+
+- Prebuilt wheels and source tarballs are available on GitHub Releases:
+  https://github.com/chaodongzhang/gemini_cli_bridge/releases
 
 ## Use with common clients (stdio)
 
