@@ -1,0 +1,5 @@
+# Map alternate author identities to a single canonical contributor
+# Format: Canonical Name <canonical@email>  Commit Name <commit@email>
+# Email is optional on the right; GitHub uses .mailmap for contributor aggregation.
+
+Alex Zhang <apertureworld@hotmail.com> Claude Claude
